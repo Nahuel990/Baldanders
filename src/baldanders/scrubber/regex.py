@@ -1,4 +1,4 @@
-"""Layer 1 — deterministic regex PII detection."""
+"""Layer 1 — deterministic regex personal-data detection."""
 
 from __future__ import annotations
 
@@ -75,7 +75,7 @@ _PATTERNS: list[tuple[str, re.Pattern[str], bool]] = [
 
 
 def detect(text: str) -> list[Span]:
-    """Return all regex-detected PII spans in the text."""
+    """Return all regex-detected personal-data spans in the text."""
     spans: list[Span] = []
     for entity_type, pattern, needs_luhn in _PATTERNS:
         for m in pattern.finditer(text):

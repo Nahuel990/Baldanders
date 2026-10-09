@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "baldanders"
 version = "0.1.0"
-description = "Local PII firewall for cloud LLMs — scrubs personal data before it leaves your machine"
+description = "Local personal-data firewall for cloud LLMs — scrubs names, emails, and other private details before they leave your machine"
 requires-python = ">=3.10"
 dependencies = [
     "click>=8.0",

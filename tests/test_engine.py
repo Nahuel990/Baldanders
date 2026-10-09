@@ -38,7 +38,7 @@ def test_scrub_multiple():
     assert "GB29NWBK60161331926819" not in result
 
 
-def test_no_pii_unchanged():
+def test_no_personal_data_unchanged():
     m = SessionMap()
     e = ScrubEngine(m)
     text = "This is a normal sentence"
@@ -61,7 +61,7 @@ def test_round_trip():
 
 
 def test_consistency_across_messages():
-    """Same PII in different messages gets the same token."""
+    """Same personal data in different messages gets the same token."""
     m = SessionMap()
     e = ScrubEngine(m)
     r1 = e.scrub("Email jane@example.com about the transfer")

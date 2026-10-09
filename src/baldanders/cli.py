@@ -1,4 +1,4 @@
-"""Baldanders CLI — PII firewall for cloud LLMs."""
+"""Baldanders CLI — personal-data firewall for cloud LLMs."""
 
 from __future__ import annotations
 
@@ -61,7 +61,7 @@ async def _repl(
 ) -> None:
     console.print()
     console.print(Panel(
-        "[bold]Baldanders[/bold] — your PII never leaves this machine.\n"
+        "[bold]Baldanders[/bold] — your personal data never leaves this machine.\n"
         f"Session: [dim]{session_id}[/dim]\n"
         f"NER model: {'[green]loaded[/green]' if engine.ner_available else '[yellow]regex-only[/yellow]'}\n"
         "Commands: [dim]/paste  /map  /raw  /clear  /quit[/dim]",
@@ -121,7 +121,7 @@ async def _repl(
         if raw.lower() == "/map":
             mapping = session_map.get_map()
             if not mapping:
-                console.print("[dim]No PII mapped yet.[/dim]")
+                console.print("[dim]No personal data mapped yet.[/dim]")
             else:
                 for token, real in mapping.items():
                     console.print(f"  {token} → [bold]{real}[/bold]")
@@ -137,7 +137,7 @@ async def _repl(
             console.print("[dim]Conversation cleared.[/dim]\n")
             continue
 
-        # Scrub PII (unless raw mode)
+        # Scrub personal data (unless raw mode)
         if raw_mode:
             scrubbed = raw
         else:
@@ -177,7 +177,7 @@ async def _repl(
 
         messages.append({"role": "assistant", "content": response})
 
-        # Rehydrate PII in response
+        # Restore personal data in the response
         rehydrated = session_map.rehydrate(response)
 
         console.print()
@@ -199,7 +199,7 @@ async def _repl(
 @click.option("--resume", "-r", default=None, help="Resume a previous session by ID.")
 @click.pass_context
 def main(ctx: click.Context, provider: str, model: str, api_key: str, base_url: str, verbose: bool, resume: str) -> None:
-    """Baldanders — local PII firewall for cloud LLMs."""
+    """Baldanders — local personal-data firewall for cloud LLMs."""
     if ctx.invoked_subcommand is not None:
         return
 
@@ -239,9 +239,9 @@ def main(ctx: click.Context, provider: str, model: str, api_key: str, base_url: 
 
 @main.command()
 def download() -> None:
-    """Download the GLiNER PII model for contextual detection."""
+    """Download the GLiNER model for name and address detection."""
     async def _do() -> None:
-        console.print("[dim]Downloading GLiNER PII model...[/dim]")
+        console.print("[dim]Downloading GLiNER name-and-address model...[/dim]")
         path = await download_model()
         console.print(f"[green]Model saved to {path}[/green]")
 

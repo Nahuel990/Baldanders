@@ -1,4 +1,4 @@
-"""Layer 2 — GLiNER ONNX-based contextual PII detection."""
+"""Layer 2 — GLiNER ONNX-based contextual personal-data detection."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ log = logging.getLogger(__name__)
 
 # Entity labels to request from GLiNER (zero-shot)
 # Keep this focused — fewer labels = fewer false positives
-PII_LABELS = [
+PERSONAL_DATA_LABELS = [
     "person name",
     "street address",
     "passport number",
@@ -32,7 +32,7 @@ _MIN_LENGTH = {
     "PASSPORT": 5,
 }
 
-# Patterns that are commonly misclassified as PII
+# Patterns that are commonly misclassified as personal data
 _FALSE_POSITIVE_PATTERNS = [
     # Common words misclassified as person names
     re.compile(r"^(today|tomorrow|yesterday|now|here|there|this|that|the|none|null|true|false|yes|no)$", re.IGNORECASE),
@@ -61,7 +61,7 @@ def _is_false_positive(text: str, entity_type: str) -> bool:
 
 
 class NERDetector:
-    """Wraps a GLiNER ONNX model for contextual PII detection."""
+    """Wraps a GLiNER ONNX model for contextual personal-data detection."""
 
     def __init__(self, model_dir: Path | None = None) -> None:
         self._model = None
@@ -98,13 +98,13 @@ class NERDetector:
         return self._available
 
     def detect(self, text: str, threshold: float = 0.5) -> list[Span]:
-        """Detect PII entities using GLiNER. Returns empty list if model unavailable."""
+        """Detect personal-data entities using GLiNER. Returns empty list if model unavailable."""
         self._try_load()
         if not self._available or self._model is None:
             return []
 
         try:
-            entities = self._model.predict_entities(text, PII_LABELS, threshold=threshold)
+            entities = self._model.predict_entities(text, PERSONAL_DATA_LABELS, threshold=threshold)
         except Exception:
             log.warning("NER inference failed", exc_info=True)
             return []

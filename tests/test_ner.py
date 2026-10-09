@@ -29,8 +29,8 @@ def test_false_positive_uk_postcodes():
 
 def test_not_false_positive_real_names():
     assert _is_false_positive("John Smith", "PERSON") is False
-    assert _is_false_positive("Nahuel Nucera", "PERSON") is False
-    assert _is_false_positive("Russell Clisby", "PERSON") is False
+    assert _is_false_positive("Alex Rivera", "PERSON") is False
+    assert _is_false_positive("Jamie Chen", "PERSON") is False
 
 
 def test_false_positive_pure_numbers():

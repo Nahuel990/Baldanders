@@ -12,7 +12,7 @@ log = logging.getLogger(__name__)
 
 DEFAULT_CACHE_DIR = Path.home() / ".baldanders" / "models"
 
-# GLiNER2-PII edge ONNX — update these when a new version ships
+# GLiNER edge ONNX — update these when a new version ships
 MODEL_URL = (
     "https://huggingface.co/knowledgator/gliner-pii-edge-v1.0/resolve/main/onnx/model.onnx"
 )
@@ -37,7 +37,7 @@ def is_downloaded(cache_dir: Path = DEFAULT_CACHE_DIR) -> bool:
 
 
 async def download_model(cache_dir: Path = DEFAULT_CACHE_DIR) -> Path:
-    """Download the GLiNER PII ONNX model to the cache directory."""
+    """Download the GLiNER ONNX model to the cache directory."""
     d = model_dir(cache_dir)
     d.mkdir(parents=True, exist_ok=True)
 

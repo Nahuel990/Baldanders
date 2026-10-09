@@ -1,10 +1,10 @@
 # Baldanders
 
-Local PII firewall for cloud LLMs. Scrubs personal data before it leaves your machine.
+Local personal-data firewall for cloud LLMs. Scrubs names, emails, and other private details before they leave your machine.
 
 ## How it works
 
-You type normally. Baldanders detects PII (names, emails, IBANs, credit cards, etc.), replaces it with tokens like `[PERSON_1]`, sends the clean text to the AI, then swaps the real data back into the response. The AI never sees your personal data.
+You type normally. Baldanders detects personal details (names, emails, IBANs, credit cards, etc.), replaces them with tokens like `[PERSON_1]`, sends the clean text to the AI, then swaps the real data back into the response. The AI never sees your personal data.
 
 ## Install
 
@@ -48,7 +48,7 @@ baldanders sessions
 | Command | What it does |
 |---------|-------------|
 | `/paste` | Multi-line input mode (end with `.` on a new line) |
-| `/map` | Show current PII token mapping |
+| `/map` | Show current personal-data token mapping |
 | `/raw` | Toggle scrubbing off/on for non-sensitive messages |
 | `/clear` | Clear conversation history |
 | `/quit` | Exit |
@@ -62,7 +62,7 @@ baldanders sessions
 ## Architecture
 
 ```
-You type → Baldanders scrubs PII locally → Clean text sent to AI → Response rehydrated → You see real data
+You type → Baldanders scrubs personal data locally → Clean text sent to AI → Response restored → You see real data
 ```
 
 The token mapping lives only on your machine. Nothing is persisted to the cloud. Sessions are saved to `~/.baldanders/sessions/`.

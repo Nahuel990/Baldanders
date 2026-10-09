@@ -1,4 +1,4 @@
-"""Tests for regex PII detection."""
+"""Tests for regex personal-data detection."""
 
 from baldanders.scrubber.regex import detect
 
@@ -64,7 +64,7 @@ def test_multiple_entities():
     assert "PHONE" in types
 
 
-def test_no_pii():
+def test_no_personal_data():
     spans = detect("This is a normal sentence with no personal data")
     assert len(spans) == 0
 

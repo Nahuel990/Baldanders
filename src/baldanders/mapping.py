@@ -1,4 +1,4 @@
-"""Session-scoped PII token mapping and rehydration."""
+"""Session-scoped personal-data token mapping and rehydration."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from baldanders.scrubber.regex import Span
 
 
 class SessionMap:
-    """Maps real PII values to deterministic placeholder tokens.
+    """Maps real personal values to deterministic placeholder tokens.
 
     The same real value always maps to the same token within a session.
     The mapping lives only in memory — nothing is persisted to disk.
@@ -32,7 +32,7 @@ class SessionMap:
         return token
 
     def scrub(self, text: str, spans: list[Span]) -> str:
-        """Replace PII spans with tokens, processing right-to-left."""
+        """Replace personal-data spans with tokens, processing right-to-left."""
         # Sort spans right-to-left so replacements don't shift indices
         sorted_spans = sorted(spans, key=lambda s: s.start, reverse=True)
         result = text

@@ -13,7 +13,7 @@ from baldanders.scrubber import regex
 
 
 class ScrubEngine:
-    """Two-layer PII detection: regex first, then NER on the gaps."""
+    """Two-layer personal-data detection: regex first, then NER on the gaps."""
 
     def __init__(
         self,
@@ -39,7 +39,7 @@ class ScrubEngine:
         return self._ner.available
 
     def scrub(self, text: str) -> str:
-        """Detect PII and return scrubbed text."""
+        """Detect personal data and return scrubbed text."""
         # Layer 1: regex (deterministic)
         spans = regex.detect(text)
 
