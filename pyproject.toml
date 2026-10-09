@@ -6,7 +6,22 @@ build-backend = "hatchling.build"
 name = "baldanders"
 version = "0.1.0"
 description = "Local personal-data firewall for cloud LLMs — scrubs names, emails, and other private details before they leave your machine"
+readme = "README.md"
+license = { text = "MIT" }
 requires-python = ">=3.10"
+authors = [{ name = "Baldanders contributors" }]
+keywords = ["privacy", "llm", "cli", "personal-data"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Security",
+]
 dependencies = [
     "click>=8.0",
     "rich>=13.0",
@@ -14,10 +29,33 @@ dependencies = [
     "onnxruntime>=1.17",
     "tokenizers>=0.19",
     "gliner>=0.2.29",
+    "pyyaml>=6.0",
 ]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/Nahuel990/Baldanders"
+Repository = "https://github.com/Nahuel990/Baldanders"
+Issues = "https://github.com/Nahuel990/Baldanders/issues"
 
 [project.scripts]
 baldanders = "baldanders.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/baldanders"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/src",
+    "/tests",
+    "/README.md",
+    "/LICENSE",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

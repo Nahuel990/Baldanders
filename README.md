@@ -9,8 +9,10 @@ You type normally. Baldanders detects personal details (names, emails, IBANs, cr
 ## Install
 
 ```bash
-pip install -e .
+pip install -e ".[dev]"
 ```
+
+Use `pip install -e .` if you only need the CLI and not the tests.
 
 ## Download the NER model (optional, improves name detection)
 

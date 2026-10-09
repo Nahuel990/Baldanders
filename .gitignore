@@ -1,12 +1,38 @@
+# Python
 __pycache__/
 *.py[cod]
+*$py.class
 *.egg-info/
+*.egg
+.eggs/
 dist/
 build/
-.eggs/
-*.egg
-.pytest_cache/
 .venv/
 venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
 *.onnx
+
+# App data
 .baldanders/
+
+# OS / editor junk
+.DS_Store
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+
+# Archives accidentally dropped in the repo
+*.zip
+*.tar
+*.tar.gz
