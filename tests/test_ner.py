@@ -1,4 +1,4 @@
-"""Tests for NER detection — integration tests run only if the model is downloaded."""
+"""Tests for NER detection. Integration tests run only if the model is downloaded."""
 
 import pytest
 
@@ -105,7 +105,7 @@ def test_missing_model_is_regex_only(tmp_path):
 
 needs_model = pytest.mark.skipif(
     not is_downloaded() or __import__("importlib").util.find_spec("gliner") is None,
-    reason="model not downloaded — run `baldanders download` (needs baldanders[ner])",
+    reason="model not downloaded; run `baldanders download` (needs baldanders[ner])",
 )
 
 

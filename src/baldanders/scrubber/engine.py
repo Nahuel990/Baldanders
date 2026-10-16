@@ -1,4 +1,4 @@
-"""Scrub engine — orchestrates regex + NER layers + config."""
+"""Scrub engine: orchestrates regex + NER layers + config."""
 
 from __future__ import annotations
 

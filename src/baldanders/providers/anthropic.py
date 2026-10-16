@@ -1,4 +1,4 @@
-"""Claude API provider — official Anthropic SDK, API key or `ant auth login` profile."""
+"""Claude API provider using the official Anthropic SDK, with an API key or `ant auth login` profile."""
 
 from __future__ import annotations
 

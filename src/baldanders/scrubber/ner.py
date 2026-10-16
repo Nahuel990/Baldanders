@@ -1,4 +1,4 @@
-"""Layer 2 — multilingual GLiNER model for names, addresses and passports.
+"""Layer 2: multilingual GLiNER model for names, addresses and passports.
 
 Runs fully offline from the files `baldanders download` fetched. Optional:
 needs `pip install "baldanders[ner]"`.
@@ -19,7 +19,7 @@ from baldanders.scrubber.regex import Span
 log = logging.getLogger(__name__)
 
 # Zero-shot labels sent to GLiNER, mapped to our entity types.
-# Keep this focused — fewer labels = fewer false positives.
+# Keep this focused: fewer labels, fewer false positives.
 _LABEL_MAP = {
     "person": "PERSON",
     "street address": "ADDRESS",
@@ -169,12 +169,12 @@ class NERDetector:
 
         if self._model_dir is None or not self._model_dir.exists():
             self.load_error = "model not downloaded"
-            log.info("NER model not found — running in regex-only mode")
+            log.info("NER model not found, running in regex-only mode")
             return
 
         onnx_file = _find_onnx_file(self._model_dir)
         if onnx_file is None:
-            self.load_error = "model files incomplete — run `baldanders download`"
+            self.load_error = "model files incomplete, run `baldanders download`"
             return
 
         # Everything is local; make sure nothing reaches the network.
@@ -199,11 +199,11 @@ class NERDetector:
             self._available = True
             log.info("NER model loaded from %s", self._model_dir)
         except ImportError:
-            self.load_error = 'NER extra not installed — pip install "baldanders[ner]"'
-            log.warning("gliner not installed — running in regex-only mode")
+            self.load_error = 'NER extra not installed: pip install "baldanders[ner]"'
+            log.warning("gliner not installed, running in regex-only mode")
         except Exception as e:
             self.load_error = f"failed to load model: {e}"
-            log.warning("Failed to load NER model — running in regex-only mode", exc_info=True)
+            log.warning("Failed to load NER model, running in regex-only mode", exc_info=True)
 
     @property
     def available(self) -> bool:

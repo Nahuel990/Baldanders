@@ -1,4 +1,4 @@
-"""OpenAI-compatible provider — covers OpenAI, DeepSeek, Groq, and any /chat/completions API."""
+"""OpenAI-compatible provider. Covers OpenAI, DeepSeek, Groq, and any /chat/completions API."""
 
 from __future__ import annotations
 

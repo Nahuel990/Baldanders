@@ -1,4 +1,4 @@
-"""Layer 1 — deterministic personal-data detection.
+"""Layer 1: deterministic personal-data detection.
 
 Every rule is a candidate regex plus, where one exists, a checksum or
 structure validator (mostly from python-stdnum). Identifiers that are just a
@@ -114,7 +114,7 @@ def _ipv4(value: str) -> bool:
 
 
 def _ipv6(value: str) -> bool:
-    # Skip short forms like "1::2" (Python slices, C++ scopes) — not addresses
+    # Skip short forms like "1::2" (Python slices, C++ scopes), not addresses
     # anyone needs hidden.
     if len(value) < 8 or len([g for g in value.split(":") if g]) < 3:
         return False
@@ -354,9 +354,8 @@ _RULES: list[Rule] = [
     # Japanese block addresses: 千代田区丸の内1丁目9番2号
     Rule("ADDRESS", _r(r"[一-鿿぀-ヿ]{0,10}\d{1,3}丁目\d{1,4}番地?(?:\d{1,4}号)?")),
     # Korean road addresses: 테헤란로 152 · 강남대로94길 20
-    # ("으로" is the everyday particle "toward", not a road.)
-    # ("으로" is the everyday particle "toward", and a counter after the number
-    # — 3시 "3 o'clock", 2명 "2 people" — means it isn't a house number.)
+    # "으로" is the everyday particle "toward", not a road. A counter after the
+    # number (3시 "3 o'clock", 2명 "2 people") means it isn't a house number.
     Rule("ADDRESS", _r(r"[가-힣]{2,}(?<!으)(?:로|길)(?:\s?\d{1,4}(?:번?길))?\s?\d{1,4}(?:-\d{1,4})?(?![\d]|\s?[시분초명개번월일년원살층대권회주])")),
 
     # ---- Financial ----

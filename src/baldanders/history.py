@@ -1,4 +1,4 @@
-"""Session history — persists token mapping and conversation across restarts.
+"""Session history. Persists token mapping and conversation across restarts.
 
 Session files contain the real values behind every token, so they are written
 atomically with owner-only permissions (0600, directory 0700).

@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "baldanders"
 dynamic = ["version"]
-description = "Local personal-data firewall for cloud LLMs — scrubs names, emails, IDs and other private details before they leave your machine"
+description = "Local personal-data firewall for cloud LLMs. Scrubs names, emails, IDs and other private details before they leave your machine"
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]

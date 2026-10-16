@@ -1,4 +1,4 @@
-"""Baldanders CLI — personal-data firewall for cloud LLMs."""
+"""Baldanders CLI: personal-data firewall for cloud LLMs."""
 
 from __future__ import annotations
 
@@ -126,7 +126,7 @@ async def _repl(
     ner_line = "[green]loaded[/green]" if ner == "loaded" else f"[yellow]regex-only[/yellow] [dim]({ner})[/dim]"
     console.print()
     console.print(Panel(
-        f"[bold]Baldanders {__version__}[/bold] — your personal data never leaves this machine.\n"
+        f"[bold]Baldanders {__version__}[/bold]: your personal data never leaves this machine.\n"
         f"Provider: [bold]{provider.name}[/bold]   Session: [dim]{session_id}{'' if save else ' (not saved)'}[/dim]\n"
         f"Name/address model: {ner_line}\n"
         "Commands: [dim]/paste  /map  /raw  /clear  /help  /quit[/dim]",
@@ -171,9 +171,9 @@ async def _repl(
         if command == "/raw":
             raw_mode = not raw_mode
             if raw_mode:
-                console.print("[bold red]Raw mode ON — messages are sent exactly as typed, with no scrubbing.[/bold red]\n")
+                console.print("[bold red]Raw mode ON: messages are sent exactly as typed, with no scrubbing.[/bold red]\n")
             else:
-                console.print("[dim]Raw mode OFF — scrubbing enabled.[/dim]\n")
+                console.print("[dim]Raw mode OFF: scrubbing enabled.[/dim]\n")
             continue
         if command == "/clear":
             messages.clear()
@@ -250,7 +250,7 @@ async def _repl(
 @click.pass_context
 def main(ctx: click.Context, provider: str, model: str | None, api_key: str | None,
          base_url: str | None, verbose: bool, resume: str | None, no_save: bool) -> None:
-    """Baldanders — local personal-data firewall for cloud LLMs."""
+    """Baldanders: local personal-data firewall for cloud LLMs."""
     if ctx.invoked_subcommand is not None:
         return
 
