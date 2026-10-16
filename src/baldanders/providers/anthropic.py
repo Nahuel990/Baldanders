@@ -1,42 +1,57 @@
-"""Claude provider — calls Anthropic Messages API via httpx."""
+"""Claude API provider — official Anthropic SDK, API key or `ant auth login` profile."""
 
 from __future__ import annotations
 
-import os
+from baldanders.providers.base import BaseProvider, TOKEN_INSTRUCTIONS
 
-import httpx
-
-from baldanders.providers.base import BaseProvider
-
-API_URL = "https://api.anthropic.com/v1/messages"
+DEFAULT_MODEL = "claude-opus-5"
 
 
 class AnthropicProvider(BaseProvider):
 
+    name = "anthropic-api"
+
     def __init__(self, api_key: str | None = None) -> None:
-        self._api_key = api_key or os.environ.get("ANTHROPIC_API_KEY", "")
-        if not self._api_key:
-            raise ValueError(
-                "No Anthropic API key. Set ANTHROPIC_API_KEY or pass --api-key."
-            )
+        try:
+            import anthropic
+        except ImportError:
+            raise RuntimeError(
+                'The Anthropic SDK is not installed. Run: pip install "baldanders[anthropic]"'
+            ) from None
+        self._anthropic = anthropic
+        # With no key the SDK falls back to ANTHROPIC_API_KEY or an `ant auth login` profile.
+        self._client = anthropic.AsyncAnthropic(api_key=api_key) if api_key else anthropic.AsyncAnthropic()
 
     def default_model(self) -> str:
-        return "claude-sonnet-4-20250514"
+        return DEFAULT_MODEL
 
     async def send(self, messages: list[dict[str, str]], model: str | None = None) -> str:
         model = model or self.default_model()
-        headers = {
-            "x-api-key": self._api_key,
-            "anthropic-version": "2023-06-01",
-            "content-type": "application/json",
-        }
-        body = {
-            "model": model,
-            "max_tokens": 4096,
-            "messages": messages,
-        }
-        async with httpx.AsyncClient(timeout=120) as client:
-            resp = await client.post(API_URL, headers=headers, json=body)
-            resp.raise_for_status()
-            data = resp.json()
-        return data["content"][0]["text"]
+        kwargs = {}
+        if model == DEFAULT_MODEL:
+            # If Opus declines, let the API retry on a suitable fallback model.
+            kwargs = {"betas": ["server-side-fallback-2026-07-01"], "fallbacks": "default"}
+        try:
+            async with self._client.beta.messages.stream(
+                model=model,
+                max_tokens=64000,
+                system=TOKEN_INSTRUCTIONS,
+                messages=messages,
+                **kwargs,
+            ) as stream:
+                response = await stream.get_final_message()
+        except self._anthropic.AuthenticationError:
+            raise RuntimeError(
+                "Anthropic authentication failed. Set ANTHROPIC_API_KEY, pass --api-key, or run `ant auth login`."
+            ) from None
+        except self._anthropic.APIStatusError as e:
+            raise RuntimeError(f"Anthropic API error ({e.status_code}): {e.message}") from None
+        except self._anthropic.APIConnectionError:
+            raise RuntimeError("Could not reach the Anthropic API. Check your connection.") from None
+
+        if response.stop_reason == "refusal":
+            raise RuntimeError("Claude declined to answer this request.")
+        return "".join(block.text for block in response.content if block.type == "text")
+
+    async def aclose(self) -> None:
+        await self._client.close()
