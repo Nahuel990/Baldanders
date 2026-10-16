@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 540" width="100%" height="100%">
+  <defs>
+    <style>
+      .logo-text { fill: #18181B; }
+      /* Rim around every mask: black on light backgrounds, white on dark. */
+      .rim { fill: #18181B; stroke: #18181B; }
+      @media (prefers-color-scheme: dark) {
+        .logo-text { fill: #F4F4F5; }
+        .rim { fill: #F4F4F5; stroke: #F4F4F5; }
+      }
+    </style>
+
+    <!-- Base Mask Silhouette -->
+    <path id="mask-shape" d="M 300,50
+                             C 375,50 400,95 395,195
+                             C 390,295 335,360 300,395
+                             C 265,360 210,295 205,195
+                             C 200,95 225,50 300,50 Z" />
+
+    <!--
+      Spacing between fanned masks, outward from the mask on top:
+      its rim (5) + background gap (8) + this mask's rim (5).
+      Fill masks cut 18 out from the mask above (stroke-width 36);
+      rim masks cut 13 (stroke-width 26); rims are 5 wide (stroke-width 10).
+    -->
+    <mask id="cut-left-fill">
+      <rect width="600" height="540" fill="white" />
+      <g transform="rotate(2, 300, 395)">
+        <use href="#mask-shape" fill="black" stroke="black" stroke-width="36" stroke-linejoin="round" />
+      </g>
+    </mask>
+    <mask id="cut-left-rim">
+      <rect width="600" height="540" fill="white" />
+      <g transform="rotate(2, 300, 395)">
+        <use href="#mask-shape" fill="black" stroke="black" stroke-width="26" stroke-linejoin="round" />
+      </g>
+    </mask>
+
+    <mask id="cut-center-fill">
+      <rect width="600" height="540" fill="white" />
+      <g transform="rotate(34, 300, 395)">
+        <use href="#mask-shape" fill="black" stroke="black" stroke-width="36" stroke-linejoin="round" />
+      </g>
+    </mask>
+    <mask id="cut-center-rim">
+      <rect width="600" height="540" fill="white" />
+      <g transform="rotate(34, 300, 395)">
+        <use href="#mask-shape" fill="black" stroke="black" stroke-width="26" stroke-linejoin="round" />
+      </g>
+    </mask>
+  </defs>
+
+  <!-- 1. LEFT MASK: Serious / Guarded (Deep Charcoal) -->
+  <g mask="url(#cut-left-rim)">
+    <g transform="rotate(-32, 300, 395)">
+      <use href="#mask-shape" class="rim" stroke-width="10" stroke-linejoin="round" />
+    </g>
+  </g>
+  <g mask="url(#cut-left-fill)">
+    <g transform="rotate(-32, 300, 395)">
+      <use href="#mask-shape" fill="#18181B" />
+      <polygon points="230,155 285,172 280,190 225,173" fill="#FFFFFF" />
+      <polygon points="370,155 315,172 320,190 375,173" fill="#FFFFFF" />
+      <rect x="255" y="275" width="90" height="18" rx="4" fill="#FFFFFF" />
+    </g>
+  </g>
+
+  <!-- 2. CENTER MASK: Theatrical / Decoy (Firewall Crimson) -->
+  <g mask="url(#cut-center-rim)">
+    <g transform="rotate(2, 300, 395)">
+      <use href="#mask-shape" class="rim" stroke-width="10" stroke-linejoin="round" />
+    </g>
+  </g>
+  <g mask="url(#cut-center-fill)">
+    <g transform="rotate(2, 300, 395)">
+      <use href="#mask-shape" fill="#E11D48" />
+      <path d="M 225,175 Q 255,140 285,175 Q 255,162 225,175 Z" fill="#FFFFFF" />
+      <path d="M 315,175 Q 345,140 375,175 Q 345,162 315,175 Z" fill="#FFFFFF" />
+      <path d="M 245,265 Q 300,325 355,265 Q 300,295 245,265 Z" fill="#FFFFFF" />
+    </g>
+  </g>
+
+  <!-- 3. RIGHT MASK: The Shift / Cipher (Signal Orange) -->
+  <g transform="rotate(34, 300, 395)">
+    <use href="#mask-shape" class="rim" stroke-width="10" stroke-linejoin="round" />
+    <use href="#mask-shape" fill="#F97316" />
+    <polygon points="255,145 280,170 255,195 230,170" fill="#FFFFFF" />
+    <circle cx="345" cy="170" r="14" fill="none" stroke="#FFFFFF" stroke-width="10" />
+    <rect x="245" y="260" width="65" height="15" rx="3" fill="#FFFFFF" />
+    <rect x="285" y="285" width="65" height="15" rx="3" fill="#FFFFFF" />
+  </g>
+
+  <!-- ENGRAVERS' GOTHIC STYLE WORDMARK -->
+  <text x="303" y="475"
+        text-anchor="middle"
+        font-family="'Engravers Gothic', 'Copperplate Gothic Light', 'Arial Black', sans-serif"
+        font-size="38"
+        font-weight="900"
+        letter-spacing="14"
+        class="logo-text">BALDANDERS</text>
+</svg>
