@@ -11,10 +11,10 @@
 Local personal-data firewall for cloud LLMs. Chat with Claude, ChatGPT, Grok and others while your names, emails, ID numbers, bank details and secrets stay on your machine.
 
 ```
-You:        Hola, soy Nahuel Nucera, mi DNI es 30.123.456 y mi mail nahuel@gmail.com
-Sent to AI: Hola, soy [PERSON_1], mi DNI es [NATIONAL_ID_1] y mi mail [EMAIL_1]
-AI replied: Hola [PERSON_1], ...
-You see:    Hola Nahuel Nucera, ...
+You:        Hi, I'm Nahuel Nucera, my DNI is 30.123.456 and my email is nahuel@gmail.com
+Sent to AI: Hi, I'm [PERSON_1], my DNI is [NATIONAL_ID_1] and my email is [EMAIL_1]
+AI replied: Hi [PERSON_1], ...
+You see:    Hi Nahuel Nucera, ...
 ```
 
 ## How it works
