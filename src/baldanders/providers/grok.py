@@ -1,55 +1,88 @@
-"""Grok CLI provider — uses SuperGrok/X Premium+ subscription, no API key."""
+"""Grok provider — uses grok-cli with a SuperGrok / X Premium+ login, no API key."""
 
 from __future__ import annotations
 
+import json
 import shutil
-import subprocess
-from pathlib import Path
+from typing import Any
 
-from baldanders.providers.base import BaseProvider
+from baldanders.providers.base import BaseProvider, TOKEN_INSTRUCTIONS, run_cli
 
 
 class GrokCLIProvider(BaseProvider):
-    """Sends prompts via grok-cli.
+    """Sends prompts via `grok-cli chat`.
 
-    Requires: grok-cli installed (see https://github.com/Moore-developers/grok-cli)
-    Auth: `grok login` (browser OAuth, one-time)
+    Requires: grok-cli (https://github.com/Moore-developers/grok-cli)
+    Auth: `grok-cli login` (browser OAuth, one-time)
+
+    grok-cli keeps no conversation state, so the scrubbed transcript is sent
+    each turn. Web search is turned off so prompts stay between you and Grok.
     """
 
+    name = "grok"
+
     def __init__(self) -> None:
-        self._binary = shutil.which("grok")
+        self._binary = shutil.which("grok-cli")
         if not self._binary:
             raise RuntimeError(
                 "grok-cli not found. See: https://github.com/Moore-developers/grok-cli\n"
-                "Then run: grok login"
+                "Then run: grok-cli login"
             )
-        self._first_sent = False
 
     def default_model(self) -> str:
         return ""
 
     async def send(self, messages: list[dict[str, str]], model: str | None = None) -> str:
-        last_user_msg = ""
-        for m in reversed(messages):
-            if m["role"] == "user":
-                last_user_msg = m["content"]
-                break
-
-        cmd = [self._binary, "chat", "--message", last_user_msg]
-
+        cmd = [
+            self._binary, "chat",
+            "--json",
+            "--no-web-search",
+            "--system", TOKEN_INSTRUCTIONS,
+            "--prompt", _transcript(messages),
+        ]
         if model:
             cmd.extend(["--model", model])
 
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=300,
-            cwd=str(Path.home()),
-        )
+        code, out, err = await run_cli(cmd)
+        try:
+            envelope = json.loads(out)
+        except json.JSONDecodeError:
+            if code != 0:
+                raise RuntimeError(f"Grok error: {(err or out).strip()}")
+            return out.strip()
 
-        if result.returncode != 0:
-            raise RuntimeError(f"Grok error: {result.stderr.strip()}")
+        if not envelope.get("ok", code == 0):
+            error = envelope.get("error") or {}
+            message = error.get("message") if isinstance(error, dict) else str(error)
+            raise RuntimeError(f"Grok error: {message or err.strip()}")
+        return _extract_text(envelope.get("data"))
 
-        self._first_sent = True
-        return result.stdout.strip()
+
+def _transcript(messages: list[dict[str, str]]) -> str:
+    if len(messages) == 1:
+        return messages[0]["content"]
+    lines = ["Conversation so far:"]
+    for m in messages[:-1]:
+        speaker = "User" if m["role"] == "user" else "Assistant"
+        lines.append(f"\n{speaker}: {m['content']}")
+    lines.append(f"\n\nReply to the user's latest message:\n{messages[-1]['content']}")
+    return "\n".join(lines)
+
+
+def _extract_text(data: Any) -> str:
+    """Pull the reply out of grok-cli's `data` payload."""
+    if isinstance(data, str):
+        return data
+    if isinstance(data, dict):
+        for key in ("text", "output_text", "content", "message", "response", "answer"):
+            value = data.get(key)
+            if isinstance(value, str) and value.strip():
+                return value
+            if isinstance(value, (dict, list)):
+                found = _extract_text(value)
+                if found:
+                    return found
+    if isinstance(data, list):
+        parts = [_extract_text(item) for item in data]
+        return "\n".join(p for p in parts if p)
+    return ""

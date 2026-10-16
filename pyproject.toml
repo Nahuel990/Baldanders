@@ -1,40 +1,52 @@
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
 [project]
 name = "baldanders"
-version = "0.1.0"
-description = "Local personal-data firewall for cloud LLMs — scrubs names, emails, and other private details before they leave your machine"
+dynamic = ["version"]
+description = "Local personal-data firewall for cloud LLMs — scrubs names, emails, IDs and other private details before they leave your machine"
 readme = "README.md"
-license = { text = "MIT" }
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.10"
 authors = [{ name = "Baldanders contributors" }]
-keywords = ["privacy", "llm", "cli", "personal-data"]
+keywords = ["privacy", "pii", "llm", "cli", "personal-data", "gdpr", "redaction", "anonymization"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Environment :: Console",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
+    "Intended Audience :: End Users/Desktop",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Security",
+    "Topic :: Text Processing :: Filters",
 ]
 dependencies = [
     "click>=8.0",
     "rich>=13.0",
     "httpx>=0.27",
-    "onnxruntime>=1.17",
-    "tokenizers>=0.19",
-    "gliner>=0.2.29",
     "pyyaml>=6.0",
+    "phonenumbers>=8.13",
+    "python-stdnum>=1.20",
 ]
 
 [project.optional-dependencies]
+# Multilingual name/address detection (pulls in PyTorch; ~1 GB installed)
+ner = ["gliner[onnx]>=0.2.29"]
+# Direct Claude API provider (-p anthropic-api)
+anthropic = ["anthropic>=1.15"]
+all = ["baldanders[ner,anthropic]"]
 dev = [
     "pytest>=8.0",
+    "build>=1.2",
+    "twine>=6.0",
 ]
 
 [project.urls]
@@ -44,6 +56,9 @@ Issues = "https://github.com/Nahuel990/Baldanders/issues"
 
 [project.scripts]
 baldanders = "baldanders.cli:main"
+
+[tool.hatch.version]
+path = "src/baldanders/__init__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/baldanders"]
