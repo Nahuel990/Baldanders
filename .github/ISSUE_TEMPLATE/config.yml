@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Report a privacy leak or vulnerability privately
+    url: https://github.com/Nahuel990/Baldanders/security/advisories/new
+    about: If personal data reached the AI despite scrubbing, please report it here instead of in a public issue.

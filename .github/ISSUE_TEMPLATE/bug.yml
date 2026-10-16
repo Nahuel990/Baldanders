@@ -1,0 +1,28 @@
+name: Bug report
+description: Something crashes or doesn't work as documented
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Please don't paste real personal data.** Replace names, numbers and emails with made-up ones.
+        If personal data reached the AI despite scrubbing, report it privately instead: [security advisory](https://github.com/Nahuel990/Baldanders/security/advisories/new).
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you ran, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Error output
+      render: shell
+  - type: input
+    id: version
+    attributes:
+      label: Version and environment
+      placeholder: "baldanders 0.1.0, macOS 15, Python 3.12, -p claude"
+    validations:
+      required: true
