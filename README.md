@@ -4,8 +4,8 @@
 
 # Baldanders
 
-[![PyPI](https://img.shields.io/pypi/v/baldanders)](https://pypi.org/project/baldanders/)
-[![Python](https://img.shields.io/pypi/pyversions/baldanders)](https://pypi.org/project/baldanders/)
+[![PyPI](https://img.shields.io/pypi/v/baldanders?cacheSeconds=3600)](https://pypi.org/project/baldanders/)
+[![Python](https://img.shields.io/pypi/pyversions/baldanders?cacheSeconds=3600)](https://pypi.org/project/baldanders/)
 [![CI](https://github.com/Nahuel990/Baldanders/actions/workflows/ci.yml/badge.svg)](https://github.com/Nahuel990/Baldanders/actions/workflows/ci.yml)
 
 Local personal-data firewall for cloud LLMs. Chat with Claude, ChatGPT, Grok and others while your names, emails, ID numbers, bank details and secrets stay on your machine.
