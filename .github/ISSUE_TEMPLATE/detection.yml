@@ -1,0 +1,37 @@
+name: Detection problem
+description: Something isn't scrubbed, or something is scrubbed that shouldn't be
+labels: [detection]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Use made-up data only.** For ID numbers, the documented examples from [python-stdnum](https://arthurdejong.org/python-stdnum/) pass checksums without belonging to anyone.
+        Try `baldanders scrub --json "your text"` to see exactly what is detected.
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Kind of problem
+      options:
+        - Missed (personal data was not scrubbed)
+        - False positive (normal text was scrubbed)
+    validations:
+      required: true
+  - type: textarea
+    id: example
+    attributes:
+      label: Example text (made up)
+      description: The input, and which part should or shouldn't be scrubbed.
+      placeholder: "Mi DNI es 20.123.456 → expected [NATIONAL_ID_1]"
+    validations:
+      required: true
+  - type: input
+    id: country
+    attributes:
+      label: Country / language / format
+      placeholder: "Argentina, Spanish, DNI written with dots"
+  - type: checkboxes
+    id: model
+    attributes:
+      label: Setup
+      options:
+        - label: The name/address model is installed (`baldanders download`)
