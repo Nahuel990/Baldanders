@@ -87,7 +87,7 @@ async def download_model(
                             progress(name, done, total)
             if sha is not None and _sha256(partial) != sha:
                 partial.unlink(missing_ok=True)
-                raise RuntimeError(f"Checksum mismatch for {name} — download corrupted, try again.")
+                raise RuntimeError(f"Checksum mismatch for {name}. The download is corrupted, try again.")
             partial.replace(target)
 
     return d

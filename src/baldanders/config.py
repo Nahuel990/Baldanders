@@ -1,4 +1,4 @@
-"""User configuration — allowlist, denylist, custom patterns, regions."""
+"""User configuration: allowlist, denylist, custom patterns, regions."""
 
 from __future__ import annotations
 
@@ -62,7 +62,7 @@ def load_config(path: Path = DEFAULT_CONFIG_PATH) -> Config:
     try:
         import yaml
     except ImportError:
-        log.warning("PyYAML not installed — ignoring config file. pip install pyyaml")
+        log.warning("PyYAML not installed, ignoring config file. pip install pyyaml")
         return Config(regions=system_regions())
 
     try:

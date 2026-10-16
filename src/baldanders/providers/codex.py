@@ -1,4 +1,4 @@
-"""OpenAI Codex CLI provider — uses the user's ChatGPT subscription, no API key."""
+"""OpenAI Codex CLI provider. Uses the user's ChatGPT subscription, no API key."""
 
 from __future__ import annotations
 

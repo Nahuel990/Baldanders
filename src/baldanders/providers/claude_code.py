@@ -1,4 +1,4 @@
-"""Claude Code provider — uses the user's existing auth via `claude -p`."""
+"""Claude Code provider. Uses the user's existing auth via `claude -p`."""
 
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ NO_TOOLS_NOTE = (
 class ClaudeCodeProvider(BaseProvider):
     """Sends prompts via `claude -p` with --resume to keep conversation state.
 
-    No API key needed — Claude Code handles auth with the user's
+    No API key needed: Claude Code handles auth with the user's
     consumer account. Baldanders never touches credentials.
 
     All tools and MCP servers are disabled, and it runs in an empty directory,

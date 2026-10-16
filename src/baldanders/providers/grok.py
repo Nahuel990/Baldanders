@@ -1,4 +1,4 @@
-"""Grok provider — uses grok-cli with a SuperGrok / X Premium+ login, no API key."""
+"""Grok provider. Uses grok-cli with a SuperGrok / X Premium+ login, no API key."""
 
 from __future__ import annotations
 
