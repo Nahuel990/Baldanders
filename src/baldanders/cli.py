@@ -14,8 +14,9 @@ from rich.text import Text
 
 from baldanders import __version__
 from baldanders.config import Config, create_default_config, load_config
+from baldanders import vault
 from baldanders.history import (
-    delete_session, list_sessions, load_session, new_session_id, save_session,
+    delete_session, list_sessions, load_session, migrate_plaintext, new_session_id, save_session,
 )
 from baldanders.mapping import SessionMap
 from baldanders.model_manager import download_model, is_downloaded, model_dir
@@ -95,6 +96,12 @@ async def _repl(
         ner_status=engine.ner_status, version=__version__, interactive=interactive,
     )
     ui.header()
+    if provider.name == "codex":
+        ui.note(
+            "Codex can read files on this computer (its sandbox is read-only, not read-nothing). "
+            "Use -p claude-code for the strictest setup.",
+            style=ORANGE,
+        )
 
     def persist() -> None:
         if save:
@@ -199,6 +206,12 @@ def main(ctx: click.Context, provider: str, model: str | None, api_key: str | No
     create_default_config()
     config = load_config()
     save = config.save_sessions and not no_save
+    if save and not vault.available():
+        # Never fall back to plaintext: the token map holds the real values.
+        console.print(Text(f"Sessions won't be saved: {vault.unavailable_reason()}.", style="yellow"))
+        save = False
+    if vault.available():
+        migrate_plaintext()
 
     if resume:
         loaded = load_session(resume)
@@ -289,6 +302,9 @@ def sessions(delete_id: str | None) -> None:
             console.print(f"[dim]Deleted session {delete_id}.[/dim]")
         else:
             console.print(Text(f"Session '{delete_id}' not found.", style="red"))
+        return
+    if not vault.available():
+        console.print(Text(f"Saved sessions can't be opened: {vault.unavailable_reason()}.", style="yellow"))
         return
     saved = list_sessions()
     if not saved:

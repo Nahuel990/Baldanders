@@ -17,6 +17,30 @@ if (_real_home / "models").is_dir():
         pass  # e.g. Windows without symlink rights: NER integration tests skip
 os.environ["BALDANDERS_HOME"] = str(_test_home)
 
+# Never touch the real system keychain from tests: use an in-memory one.
+import keyring
+from keyring.backend import KeyringBackend
+
+
+class MemoryKeyring(KeyringBackend):
+    priority = 1
+
+    def __init__(self):
+        super().__init__()
+        self.store = {}
+
+    def get_password(self, service, username):
+        return self.store.get((service, username))
+
+    def set_password(self, service, username, password):
+        self.store[(service, username)] = password
+
+    def delete_password(self, service, username):
+        self.store.pop((service, username), None)
+
+
+keyring.set_keyring(MemoryKeyring())
+
 for var in ("LC_ALL", "LC_TELEPHONE"):
     os.environ.pop(var, None)
 os.environ["LANG"] = "C"
