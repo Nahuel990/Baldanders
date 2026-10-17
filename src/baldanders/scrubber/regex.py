@@ -220,6 +220,10 @@ NATIONAL_ID_CONTEXT = (
     "dni", "d.n.i", "documento", "documento de identidad", "cedula", "c.c", "c.i",
     "cedula de identidad", "identificacion", "id number", "id no", "id #", "identity",
     "my id", "id is", "id:", "your id", "his id", "her id",
+    # The same in other languages: Spanish, Portuguese, French, German, Italian, Dutch
+    "mi id", "id es", "tu id", "su id", "numero de id", "numero de documento",
+    "meu id", "minha id", "seu id", "mon id", "ton id", "votre id", "son id",
+    "meine id", "deine id", "ihre id", "id ist", "il mio id", "la mia id", "mijn id",
     "national id", "identity card", "id card", "carte d'identite", "cni",
     "personalausweis", "ausweis", "carta d'identita", "bilhete de identidade",
     "rg", "registro geral", "rut", "cuil", "cuit", "nit", "nif", "nie", "curp",

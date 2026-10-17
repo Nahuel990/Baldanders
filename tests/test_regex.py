@@ -350,3 +350,23 @@ def test_no_overlaps():
     spans = detect(text)
     for a, b in zip(spans, spans[1:]):
         assert a.end <= b.start
+
+
+@pytest.mark.parametrize("text, value", [
+    ("Mi ID es 12.345.678", "12.345.678"),
+    ("mi id es 12345678", "12345678"),
+    ("O meu ID é 12.345.678", "12.345.678"),
+    ("Mon ID est 12345678", "12345678"),
+    ("Meine ID ist 12345678", "12345678"),
+    ("Il mio ID è 12345678", "12345678"),
+    ("Mijn ID is 12345678", "12345678"),
+])
+def test_plain_id_in_other_languages(text, value):
+    assert ("NATIONAL_ID", value) in types(text)
+
+
+@pytest.mark.parametrize("text", [
+    "SELECT * FROM users WHERE id = 12345678", "order ID 12345678", "Customer ID 12345678", "user_id 12345678",
+])
+def test_plain_id_code_still_untouched(text):
+    assert types(text) == []
