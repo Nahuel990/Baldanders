@@ -61,45 +61,94 @@ def _fake_cli(tmp_path, monkeypatch, name, body):
     return tmp_path / "log"
 
 
-@posix_only
-def test_claude_code_end_to_end(tmp_path, monkeypatch):
-    log = _fake_cli(tmp_path, monkeypatch, "claude", f"""
-        printf '%s\\n' "$@" > {tmp_path}/args
-        cat > {tmp_path}/stdin
-        echo '{{"type":"result","is_error":false,"result":"Hola [PERSON_1]","session_id":"sess-123"}}'
-    """)
-    from baldanders.providers.claude_code import ClaudeCodeProvider
-    p = ClaudeCodeProvider()
-    reply = asyncio.run(p.send([{"role": "user", "content": "--soy [PERSON_1]"}]))
-    assert reply == "Hola [PERSON_1]"
-    args = (tmp_path / "args").read_text().splitlines()
-    assert args[:2] == ["-p", "--output-format"]
-    assert "--tools" in args and args[args.index("--tools") + 1] == ""
-    assert "--strict-mcp-config" in args
-    # Prompt goes through stdin, even one that looks like a flag.
-    assert (tmp_path / "stdin").read_text() == "--soy [PERSON_1]"
+FAKE_CLAUDE = """
+if [ "$1" = "auth" ]; then echo '{"loggedIn": %(logged_in)s, "authMethod": "claude.ai"}'; exit 0; fi
+echo "start" >> %(log)s/starts
+printf '%%s\\n' "$@" > %(log)s/args
+while IFS= read -r line; do
+  printf '%%s\\n' "$line" >> %(log)s/stdin
+  %(reply)s
+done
+"""
 
-    asyncio.run(p.send([{"role": "user", "content": "again"}]))
+OK_REPLY = (
+    """echo '{"type":"system","session_id":"sess-123"}'; """
+    """echo '{"type":"stream_event","event":{"type":"content_block_delta","delta":{"type":"text_delta","text":"Hola [PER"}}}'; """
+    """echo '{"type":"stream_event","event":{"type":"content_block_delta","delta":{"type":"text_delta","text":"SON_1]"}}}'; """
+    """echo '{"type":"result","subtype":"success","is_error":false,"result":"Hola [PERSON_1]","session_id":"sess-123"}'"""
+)
+
+
+def _claude(tmp_path, monkeypatch, reply=OK_REPLY, logged_in="true"):
+    return _fake_cli(tmp_path, monkeypatch, "claude", FAKE_CLAUDE % {"log": tmp_path, "reply": reply, "logged_in": logged_in})
+
+
+@posix_only
+def test_claude_code_streams_and_keeps_one_process(tmp_path, monkeypatch):
+    _claude(tmp_path, monkeypatch)
+    from baldanders.providers.claude_code import ClaudeCodeProvider
+
+    async def run():
+        p = ClaudeCodeProvider()
+        first = [piece async for piece in p.stream([{"role": "user", "content": "--soy [PERSON_1]"}])]
+        second = await p.send([{"role": "user", "content": "again"}])
+        state = p.get_state()
+        await p.aclose()
+        return first, second, state
+
+    first, second, state = asyncio.run(run())
+    assert first == ["Hola [PER", "SON_1]"]  # streamed in pieces
+    assert second == "Hola [PERSON_1]"
+    assert state == {"provider": "claude-code", "session_id": "sess-123"}
+    assert (tmp_path / "starts").read_text().count("start") == 1  # one process for both messages
+    args = (tmp_path / "args").read_text().splitlines()
+    assert "--tools" in args and args[args.index("--tools") + 1] == ""
+    assert "--strict-mcp-config" in args and "stream-json" in args
+    sent = [json.loads(line)["message"]["content"] for line in (tmp_path / "stdin").read_text().splitlines()]
+    assert sent == ["--soy [PERSON_1]", "again"]  # over stdin, never as arguments
+
+
+@posix_only
+def test_claude_code_resumes_after_reconnect(tmp_path, monkeypatch):
+    _claude(tmp_path, monkeypatch)
+    from baldanders.providers.claude_code import ClaudeCodeProvider
+
+    async def run():
+        p = ClaudeCodeProvider()
+        await p.send([{"role": "user", "content": "one"}])
+        await p.reconnect()
+        await p.send([{"role": "user", "content": "two"}])
+        await p.aclose()
+
+    asyncio.run(run())
     args = (tmp_path / "args").read_text().splitlines()
     assert args[args.index("--resume") + 1] == "sess-123"
-    assert p.get_state() == {"provider": "claude-code", "session_id": "sess-123"}
-
-    p.reset()
-    asyncio.run(p.send([{"role": "user", "content": "fresh"}]))
-    # reset() then a reply sets a new session; the call itself had no --resume
-    assert "--resume" not in (tmp_path / "args").read_text().splitlines()
 
 
 @posix_only
-def test_claude_code_error(tmp_path, monkeypatch):
-    _fake_cli(tmp_path, monkeypatch, "claude", """
-        cat > /dev/null
-        echo '{"type":"result","is_error":true,"result":"Not logged in"}'
-        exit 1
-    """)
+def test_claude_code_error_result(tmp_path, monkeypatch):
+    _claude(tmp_path, monkeypatch, reply="""echo '{"type":"result","subtype":"success","is_error":true,"result":"Invalid API key · Please run /login"}'""")
+    from baldanders.providers.base import is_auth_error
     from baldanders.providers.claude_code import ClaudeCodeProvider
-    with pytest.raises(RuntimeError, match="Not logged in"):
-        asyncio.run(ClaudeCodeProvider().send([{"role": "user", "content": "hi"}]))
+
+    async def run():
+        p = ClaudeCodeProvider()
+        try:
+            await p.send([{"role": "user", "content": "hi"}])
+        finally:
+            await p.aclose()
+
+    with pytest.raises(RuntimeError, match="Please run /login") as e:
+        asyncio.run(run())
+    assert is_auth_error(str(e.value))
+
+
+@posix_only
+def test_claude_code_login_check(tmp_path, monkeypatch):
+    _claude(tmp_path, monkeypatch, logged_in="false")
+    from baldanders.providers.claude_code import ClaudeCodeProvider
+    status = asyncio.run(ClaudeCodeProvider().check_login())
+    assert status.ok is False and status.login_command == ["claude", "auth", "login"]
 
 
 @posix_only

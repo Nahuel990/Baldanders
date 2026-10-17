@@ -109,3 +109,32 @@ class SessionMap:
                 etype, n = match.group(1), int(match.group(2))
                 m._counters[etype] = max(m._counters.get(etype, 0), n)
         return m
+
+
+# The tail of a streamed chunk that might be the start of a token still
+# arriving: an open bracket, or letters/underscores/digits at the very end.
+_PENDING_TAIL = re.compile(r"(\\?\[[^\]\n]{0,40}|[A-Za-z_\\][A-Za-z0-9_\\]{0,40}\s?)$")
+
+
+class StreamRehydrator:
+    """Restores tokens in a reply that arrives in pieces.
+
+    A token can be split across pieces ("[PER" + "SON_1]"), so the end of each
+    piece that could still be part of one is held back until the next piece
+    (or the end of the reply) shows what it is.
+    """
+
+    def __init__(self, session_map: SessionMap) -> None:
+        self._map = session_map
+        self._pending = ""
+
+    def feed(self, chunk: str) -> str:
+        text = self._pending + chunk
+        m = _PENDING_TAIL.search(text)
+        cut = m.start() if m else len(text)
+        self._pending = text[cut:]
+        return self._map.rehydrate(text[:cut])
+
+    def flush(self) -> str:
+        text, self._pending = self._pending, ""
+        return self._map.rehydrate(text)

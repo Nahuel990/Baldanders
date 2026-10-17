@@ -18,9 +18,9 @@ from baldanders import vault
 from baldanders.history import (
     delete_session, list_sessions, load_session, migrate_plaintext, new_session_id, save_session,
 )
-from baldanders.mapping import SessionMap
+from baldanders.mapping import SessionMap, StreamRehydrator
 from baldanders.model_manager import download_model, is_downloaded, model_dir
-from baldanders.providers.base import BaseProvider
+from baldanders.providers.base import BaseProvider, is_auth_error
 from baldanders.scrubber.engine import ScrubEngine
 from baldanders.ui import ORANGE, TerminalUI
 
@@ -80,6 +80,30 @@ def _build_engine(session_map: SessionMap, config: Config) -> ScrubEngine:
 _TOKEN = re.compile(r"\[[A-Z_]+_\d+\]")
 
 
+async def _sign_in(ui: TerminalUI, provider: BaseProvider) -> bool:
+    """Run the tool's own sign-in in this terminal, then check it worked."""
+    command = " ".join(provider.login_command)
+    if not ui.interactive:
+        ui.note(f"Run `{command}`, then start Baldanders again.")
+        return False
+    if not await ui.confirm(f"Sign in to {provider.tool} now? This runs `{command}`."):
+        ui.note(f"Run `{command}` when you're ready, then type /login or start Baldanders again.")
+        return False
+    try:
+        proc = await asyncio.create_subprocess_exec(*provider.login_command)
+        await proc.wait()
+    except OSError as e:
+        ui.error(f"Couldn't start `{command}`: {e}")
+        return False
+    status = await provider.check_login()
+    if status.ok is False:
+        ui.error(f"Still not signed in to {provider.tool}.")
+        return False
+    await provider.reconnect()
+    ui.note(f"Signed in to {provider.tool}.")
+    return True
+
+
 async def _repl(
     provider: BaseProvider,
     engine: ScrubEngine,
@@ -90,10 +114,11 @@ async def _repl(
     verbose: bool = False,
     save: bool = True,
     interactive: bool | None = None,
-) -> None:
+) -> bool:
+    """Run the chat. Returns False if it couldn't start (e.g. not signed in)."""
     ui = TerminalUI(
         console, provider=provider.name, session_id=session_id, saved=save,
-        ner_status=engine.ner_status, version=__version__, interactive=interactive,
+        ner_status=lambda: engine.ner_status, version=__version__, interactive=interactive,
     )
     ui.header()
     if provider.name == "codex":
@@ -103,12 +128,27 @@ async def _repl(
             style=ORANGE,
         )
 
-    def persist() -> None:
-        if save:
-            save_session(session_id, session_map, messages, provider_state=provider.get_state())
+    # Checked locally by the tool itself; nothing is sent to the AI.
+    status = await provider.check_login()
+    if status.ok is False:
+        ui.note(f"You're not signed in to {provider.tool}.", style=ORANGE)
+        if not await _sign_in(ui, provider):
+            return False
 
+    def persist() -> None:
+        nonlocal save
+        if not save:
+            return
+        try:
+            save_session(session_id, session_map, messages, provider_state=provider.get_state())
+        except vault.VaultUnavailable as e:
+            save = False
+            ui.note(f"Sessions won't be saved from now on: {e}.", style=ORANGE)
+
+    pending = ""  # a message that failed to send, put back in the prompt
     while True:
-        raw = await ui.read()
+        raw = await ui.read(default=pending)
+        pending = ""
         if raw is None:
             break
         if not raw:
@@ -136,12 +176,23 @@ async def _repl(
             persist()
             ui.note("Conversation cleared.")
             continue
+        if command == "/login":
+            if provider.login_command:
+                await _sign_in(ui, provider)
+            else:
+                ui.note(f"{provider.name} signs in with an API key, there's nothing to log in to.")
+            continue
 
-        # Scrub personal data (unless raw mode)
+        # Scrub personal data (unless raw mode). Runs in a thread so the
+        # spinner keeps moving if the names model is still loading.
         if ui.raw_mode:
             scrubbed = raw
         else:
-            scrubbed = engine.scrub(raw)
+            if engine.ner_status == "loading":
+                async with ui.thinking("Loading the names model…"):
+                    scrubbed = await asyncio.to_thread(engine.scrub, raw)
+            else:
+                scrubbed = await asyncio.to_thread(engine.scrub, raw)
             if scrubbed != raw:
                 known = session_map.get_map()
                 tokens = list(dict.fromkeys(t for t in _TOKEN.findall(scrubbed) if t in known))
@@ -152,9 +203,17 @@ async def _repl(
 
         messages.append({"role": "user", "content": scrubbed})
 
+        received: list[str] = []
+        rehydrator = StreamRehydrator(session_map)
+
+        async def pieces():
+            async for chunk in provider.stream(messages, model=model):
+                received.append(chunk)
+                yield rehydrator.feed(chunk)
+            yield rehydrator.flush()
+
         try:
-            async with ui.thinking():
-                response = await provider.send(messages, model=model)
+            await ui.stream_reply(pieces())
         except (KeyboardInterrupt, asyncio.CancelledError):
             # Ctrl+C while waiting: drop this turn and keep the session going.
             task = asyncio.current_task()
@@ -162,21 +221,25 @@ async def _repl(
                 task.uncancel()
             ui.note("Cancelled.")
             messages.pop()
+            pending = raw
             continue
         except Exception as e:
-            ui.error(str(e))
+            message = str(e)
+            if provider.login_command and is_auth_error(message):
+                ui.error(f"You're not signed in to {provider.tool}, or the sign-in has expired.")
+                ui.note("Type /login to sign in, then press Enter to send your message again.")
+            else:
+                ui.error(message)
             messages.pop()
+            pending = raw
             continue
 
+        response = "".join(received)
         if verbose:
             ui.raw_response(response)
-
         messages.append({"role": "assistant", "content": response})
-
-        # Restore personal data in the response
-        ui.assistant(session_map.rehydrate(response))
-
         persist()
+    return True
 
 
 @click.group(invoke_without_command=True)
@@ -206,12 +269,14 @@ def main(ctx: click.Context, provider: str, model: str | None, api_key: str | No
     create_default_config()
     config = load_config()
     save = config.save_sessions and not no_save
-    if save and not vault.available():
-        # Never fall back to plaintext: the token map holds the real values.
-        console.print(Text(f"Sessions won't be saved: {vault.unavailable_reason()}.", style="yellow"))
-        save = False
-    if vault.available():
-        migrate_plaintext()
+    # Only touch the keychain when sessions are actually saved or resumed.
+    if save or resume:
+        if vault.available():
+            migrate_plaintext()
+        elif save:
+            # Never fall back to plaintext: the token map holds the real values.
+            console.print(Text(f"Sessions won't be saved: {vault.unavailable_reason()}.", style="yellow"))
+            save = False
 
     if resume:
         loaded = load_session(resume)
@@ -228,19 +293,25 @@ def main(ctx: click.Context, provider: str, model: str | None, api_key: str | No
         session_id = new_session_id()
 
     engine = _build_engine(session_map, config)
+    engine.preload()  # the prompt appears straight away; scrubbing waits for the model if needed
 
-    async def run() -> None:
+    async def run() -> bool:
         try:
-            await _repl(llm, engine, session_map, messages, session_id, model, verbose=verbose, save=save)
+            return await _repl(llm, engine, session_map, messages, session_id, model, verbose=verbose, save=save)
         finally:
             if save and messages:
-                save_session(session_id, session_map, messages, provider_state=llm.get_state())
+                try:
+                    save_session(session_id, session_map, messages, provider_state=llm.get_state())
+                except vault.VaultUnavailable:
+                    pass
             await llm.aclose()
 
     try:
-        asyncio.run(run())
+        started = asyncio.run(run())
     except KeyboardInterrupt:
-        pass
+        started = True
+    if not started:
+        sys.exit(1)
 
 
 @main.command()

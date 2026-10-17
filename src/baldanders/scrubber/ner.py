@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 import os
 import re
+import threading
 import unicodedata
 import warnings
 from pathlib import Path
@@ -161,12 +162,27 @@ class NERDetector:
         self._available = False
         self._load_attempted = False
         self.load_error: str | None = None
+        # Held while the model loads, so a scrub that arrives mid-load waits
+        # for it instead of running without name detection.
+        self._lock = threading.Lock()
+
+    def preload(self) -> None:
+        """Start loading the model in the background."""
+        threading.Thread(target=self._try_load, name="baldanders-ner-load", daemon=True).start()
+
+    @property
+    def loading(self) -> bool:
+        return self._lock.locked() and not self._load_attempted
 
     def _try_load(self) -> None:
         if self._load_attempted:
             return
-        self._load_attempted = True
+        with self._lock:
+            if not self._load_attempted:
+                self._load()
+                self._load_attempted = True
 
+    def _load(self) -> None:
         if self._model_dir is None or not self._model_dir.exists():
             self.load_error = "model not downloaded"
             log.info("NER model not found, running in regex-only mode")

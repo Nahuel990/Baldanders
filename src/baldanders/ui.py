@@ -12,11 +12,13 @@ import os
 import sys
 import time
 from contextlib import asynccontextmanager
-from typing import AsyncIterator
+from typing import AsyncIterator, Callable
 
 from rich.console import Console
+from rich.live import Live
 from rich.markdown import Markdown
 from rich.panel import Panel
+from rich.segment import Segment
 from rich.table import Table
 from rich.text import Text
 
@@ -31,6 +33,7 @@ COMMANDS: dict[str, str] = {
     "/map": "Show which token stands for which real value",
     "/raw": "Toggle scrubbing off/on (only for messages with nothing sensitive)",
     "/clear": "Start a fresh conversation (keeps the token map)",
+    "/login": "Sign in to the current tool again",
     "/help": "Show commands and shortcuts",
     "/quit": "Exit",
 }
@@ -51,7 +54,7 @@ class TerminalUI:
         provider: str,
         session_id: str,
         saved: bool,
-        ner_status: str,
+        ner_status: Callable[[], str] | str,
         version: str,
         interactive: bool | None = None,
     ) -> None:
@@ -59,7 +62,7 @@ class TerminalUI:
         self.provider = provider
         self.session_id = session_id
         self.saved = saved
-        self.ner_status = ner_status
+        self._ner_status = ner_status if callable(ner_status) else (lambda: ner_status)
         self.version = version
         self.protected = 0
         self.raw_mode = False
@@ -71,8 +74,13 @@ class TerminalUI:
 
     # --- Header -----------------------------------------------------------
 
+    @property
+    def ner_status(self) -> str:
+        return self._ner_status()
+
     def header(self) -> None:
-        model = "loaded" if self.ner_status == "loaded" else f"regex only ({self.ner_status})"
+        status = self.ner_status
+        model = {"loaded": "loaded", "loading": "loading in the background"}.get(status, f"regex only ({status})")
         body = Text()
         body.append("◆ ", style=f"bold {ACCENT}")
         body.append("Baldanders", style="bold")
@@ -168,6 +176,8 @@ class TerminalUI:
             if time.monotonic() - self._last_interrupt < 2:
                 return HTML("<toolbar>  Press Ctrl+C again to exit</toolbar>")
             parts = [self.provider]
+            if self.ner_status == "loading":
+                parts.append("loading names model…")
             if self.raw_mode:
                 parts.append("<b><style fg='%s'>RAW: scrubbing off</style></b>" % ORANGE)
             parts.append(f"{self.protected} item{'s' if self.protected != 1 else ''} protected")
@@ -187,12 +197,15 @@ class TerminalUI:
             enable_history_search=False,
         )
 
-    async def read(self) -> str | None:
-        """Read one message. Returns None when the user exits."""
+    async def read(self, default: str = "") -> str | None:
+        """Read one message. Returns None when the user exits.
+
+        `default` pre-fills the prompt, e.g. with a message that failed to send.
+        """
         if self._session is None:
             return self._read_plain()
         try:
-            text = await self._session.prompt_async()
+            text = await self._session.prompt_async(default=default)
         except (EOFError, KeyboardInterrupt):
             return None
         text = text.strip()
@@ -249,12 +262,8 @@ class TerminalUI:
         ))
 
     def assistant(self, text: str) -> None:
-        grid = Table.grid(padding=(0, 1))
-        grid.add_column(width=1, no_wrap=True)
-        grid.add_column(ratio=1)
-        grid.add_row(Text(BULLET, style=f"bold {ACCENT}"), Markdown(text))
         self.console.print()
-        self.console.print(grid)
+        self.console.print(self._reply(text))
         self.console.print()
 
     def error(self, message: str) -> None:
@@ -289,17 +298,70 @@ class TerminalUI:
             self.console.print(line)
         self.console.print()
 
+    async def confirm(self, question: str, default: bool = True) -> bool:
+        """Yes/no question. Non-interactive sessions get the default."""
+        if not self.interactive:
+            return default
+        from prompt_toolkit import PromptSession
+
+        hint = "Y/n" if default else "y/N"
+        try:
+            answer = await PromptSession().prompt_async(f"{question} [{hint}] ")
+        except (EOFError, KeyboardInterrupt):
+            return False
+        answer = answer.strip().lower()
+        return default if not answer else answer in ("y", "yes", "s", "si", "sí")
+
+    async def stream_reply(self, pieces: AsyncIterator[str]) -> str:
+        """Show a reply as it arrives, then print it in full. Returns the text shown."""
+        text = ""
+        live: Live | None = None
+        async with self.thinking():
+            iterator = pieces.__aiter__()
+            # Wait for the first piece under the spinner.
+            while True:
+                try:
+                    piece = await iterator.__anext__()
+                except StopAsyncIteration:
+                    iterator = None
+                    break
+                if piece:
+                    text += piece
+                    break
+        try:
+            if iterator is not None:
+                live = Live(console=self.console, refresh_per_second=15, transient=True)
+                live.start()
+                live.update(_Tail(self._reply(text), self.console.height - 4))
+                async for piece in iterator:
+                    if piece:
+                        text += piece
+                        live.update(_Tail(self._reply(text), self.console.height - 4))
+        finally:
+            if live is not None:
+                live.stop()
+            if text:
+                self.assistant(text)
+        return text
+
+    def _reply(self, text: str) -> Table:
+        grid = Table.grid(padding=(0, 1))
+        grid.add_column(width=1, no_wrap=True)
+        grid.add_column(ratio=1)
+        grid.add_row(Text(BULLET, style=f"bold {ACCENT}"), Markdown(text))
+        return grid
+
     @asynccontextmanager
-    async def thinking(self) -> AsyncIterator[None]:
-        """Animated status with elapsed time while waiting for the reply."""
+    async def thinking(self, label: str = "Thinking…") -> AsyncIterator[None]:
+        """Animated status with elapsed time while waiting."""
         start = time.monotonic()
-        status = self.console.status(_thinking_text(0), spinner="dots", spinner_style=ACCENT)
+        status = self.console.status(_thinking_text(0, label), spinner="dots", spinner_style=ACCENT)
         status.start()
 
         async def tick() -> None:
             while True:
                 await asyncio.sleep(1)
-                status.update(_thinking_text(int(time.monotonic() - start)))
+                status.update(_thinking_text(int(time.monotonic() - start), label))
 
         task = asyncio.create_task(tick())
         try:
@@ -309,8 +371,23 @@ class TerminalUI:
             status.stop()
 
 
-def _thinking_text(seconds: int) -> Text:
-    text = Text("Thinking… ", style=f"bold {ACCENT}")
+class _Tail:
+    """Renders only the last `height` lines, so a long streaming reply never
+    overflows the screen while it's still being written."""
+
+    def __init__(self, renderable, height: int) -> None:
+        self.renderable = renderable
+        self.height = max(3, height)
+
+    def __rich_console__(self, console, options):
+        lines = console.render_lines(self.renderable, options, pad=False)
+        for line in lines[-self.height:]:
+            yield from line
+            yield Segment.line()
+
+
+def _thinking_text(seconds: int, label: str = "Thinking…") -> Text:
+    text = Text(f"{label} ", style=f"bold {ACCENT}")
     text.append(f"({seconds}s · ctrl+c to cancel)", style="dim")
     return text
 
