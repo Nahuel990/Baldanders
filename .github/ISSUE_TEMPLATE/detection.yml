@@ -21,14 +21,14 @@ body:
     attributes:
       label: Example text (made up)
       description: The input, and which part should or shouldn't be scrubbed.
-      placeholder: "Mi DNI es 20.123.456 → expected [NATIONAL_ID_1]"
+      placeholder: "My ID is 20.123.456 → expected [NATIONAL_ID_1]"
     validations:
       required: true
   - type: input
     id: country
     attributes:
       label: Country / language / format
-      placeholder: "Argentina, Spanish, DNI written with dots"
+      placeholder: "Argentina, Spanish, ID number written with dots"
   - type: checkboxes
     id: model
     attributes:

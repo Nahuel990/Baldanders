@@ -1,4 +1,4 @@
-"""OpenAI Codex CLI provider. Uses the user's ChatGPT subscription, no API key."""
+"""OpenAI Codex CLI provider. Uses the user's ChatGPT plan login, no API key."""
 
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ class CodexProvider(BaseProvider):
     Runs read-only in an empty directory so the agent has nothing local to read.
     """
 
-    name = "chatgpt"
+    name = "codex"
 
     def __init__(self) -> None:
         self._binary = shutil.which("codex")
@@ -44,7 +44,7 @@ class CodexProvider(BaseProvider):
         return {"provider": self.name, "thread_id": self._thread_id}
 
     def set_state(self, state: dict[str, Any]) -> None:
-        if state.get("provider") == self.name:
+        if state.get("provider") in (self.name, "chatgpt"):  # "chatgpt" in 0.1.0 sessions
             self._thread_id = state.get("thread_id")
 
     async def send(self, messages: list[dict[str, str]], model: str | None = None) -> str:

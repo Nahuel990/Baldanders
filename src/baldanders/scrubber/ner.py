@@ -270,7 +270,9 @@ def _trim_to_code(text: str, start: int, end: int) -> tuple[int, int] | None:
     The model sometimes includes the keyword ("DNI 20.123.456", "passport
     X1234567"); the number is the only part worth hiding.
     """
-    codes = [m for m in _CODE.finditer(text, start, end) if len(m.group()) >= 5]
+    # Passport numbers are at least 6 characters; shorter codes are sizes,
+    # dates or counts ("35x45").
+    codes = [m for m in _CODE.finditer(text, start, end) if len(m.group()) >= 6]
     if not codes:
         return None
     return codes[-1].start(), codes[-1].end()

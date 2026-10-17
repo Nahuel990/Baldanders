@@ -2,7 +2,7 @@
   <img src="https://raw.githubusercontent.com/Nahuel990/Baldanders/main/baldanders.svg" alt="Baldanders" width="320">
 </p>
 
-<h3 align="center">Put real customer data through ClaudeCode and Codex without it ever reaching them.</h3>
+<h3 align="center">Put real customer data through Claude Code and Codex without it ever reaching them.</h3>
 
 <p align="center">
   <a href="https://pypi.org/project/baldanders/"><img src="https://img.shields.io/pypi/v/baldanders?cacheSeconds=3600" alt="PyPI"></a>
@@ -12,10 +12,10 @@
 </p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Nahuel990/Baldanders/main/docs/demo.gif" alt="Baldanders replacing a DNI and a phone number with tokens before they reach the AI, then restoring them in the reply" width="760">
+  <img src="https://raw.githubusercontent.com/Nahuel990/Baldanders/main/docs/demo.gif" alt="Baldanders replacing an ID number and a phone number with tokens before they reach the AI, then restoring them in the reply" width="760">
 </p>
 
-Baldanders is a local personal-data firewall for cloud LLMs. You chat with Claude, ChatGPT or Grok as usual. Names, emails, ID numbers, bank details and secrets are swapped for tokens like `[PERSON_1]` before anything leaves your machine, and swapped back when the reply arrives. The AI never sees the data. The token map never leaves your computer.
+Baldanders is a local personal-data firewall for cloud LLMs. You use Claude Code, Codex or Grok as usual. Names, emails, ID numbers, bank details and secrets are swapped for tokens like `[PERSON_1]` before anything leaves your machine, and swapped back when the reply arrives. The AI never sees the data. The token map never leaves your computer.
 
 ## Why
 
@@ -28,7 +28,7 @@ Baldanders removes that limit at the source. Staff keep using the seat licences 
 ```bash
 pip install "baldanders[all]"
 baldanders download     # one-time, ~320 MB name & address model, runs offline afterwards
-baldanders              # chat with Claude through your Claude Code login
+baldanders              # use Claude Code through your existing login
 ```
 
 ## How it works
@@ -43,9 +43,11 @@ Each match becomes a token. Only the cleaned text is sent, plus a short instruct
 
 ## Providers
 
+Claude Code and Codex are coding agents: Baldanders talks to them through their command-line tools, so replies come from the models behind them with their coding-focused setup, not from the ChatGPT or Claude chat apps.
+
 ```bash
-baldanders                      # Claude, via your Claude Code login (no API key)
-baldanders -p chatgpt           # ChatGPT, via your Codex CLI login (no API key)
+baldanders                      # Claude Code (default), via your Claude login (no API key)
+baldanders -p codex             # OpenAI Codex CLI, via your ChatGPT login (no API key)
 baldanders -p grok              # Grok, via grok-cli (SuperGrok / X Premium+, no API key)
 
 baldanders -p anthropic-api     # Claude API (ANTHROPIC_API_KEY or `ant auth login`)
@@ -140,7 +142,7 @@ Set `BALDANDERS_HOME` to keep config, sessions and the model somewhere other tha
 
 - **What is sent:** only the scrubbed text, plus a short instruction telling the AI to keep the tokens intact. Run with `-v` to see every byte.
 - **What stays local:** the token map, the model, and your config. Saved sessions (`~/.baldanders/sessions/`) contain the real values so `--resume` works. They are readable only by your user. Turn them off with `--no-save` or `save_sessions: false`.
-- **Subscription CLIs:** Baldanders runs `claude` and `codex` in an empty private directory. For Claude Code, all tools and MCP servers are disabled, so the AI can't read your files. Codex runs in its read-only sandbox, so it can still read files outside that directory if it chooses to. Prefer `-p claude` or an API provider for sensitive work. These CLIs add their own context to each request (OS, working directory path, and for Claude Code your personal `~/.claude/CLAUDE.md` if you have one). Baldanders doesn't control that context.
+- **Subscription CLIs:** Baldanders runs `claude` and `codex` in an empty private directory. For Claude Code, all tools and MCP servers are disabled, so the AI can't read your files. Codex runs in its read-only sandbox, so it can still read files outside that directory if it chooses to. Prefer `-p claude-code` or an API provider for sensitive work. These CLIs add their own context to each request (OS, working directory path, and for Claude Code your personal `~/.claude/CLAUDE.md` if you have one). Baldanders doesn't control that context.
 - **No detector is perfect.** Unusual names, free-form addresses, or IDs written in unexpected ways can slip through. Check `-v` output when it matters, and add anything specific to your work to the `denylist`.
 
 ## Install options
@@ -155,8 +157,8 @@ pip install "baldanders[all]"          # everything
 [pipx](https://pipx.pypa.io) keeps it isolated: `pipx install "baldanders[all]"`.
 
 **Requirements:** Python 3.10+, plus the CLI for the provider you use:
-- `-p claude`: [Claude Code](https://docs.anthropic.com/en/docs/claude-code), logged in
-- `-p chatgpt`: [Codex CLI](https://github.com/openai/codex) (`npm install -g @openai/codex`, then `codex login`)
+- `-p claude-code`: [Claude Code](https://docs.anthropic.com/en/docs/claude-code), logged in
+- `-p codex`: [Codex CLI](https://github.com/openai/codex) (`npm install -g @openai/codex`, then `codex login`)
 - `-p grok`: [grok-cli](https://github.com/Moore-developers/grok-cli) (`grok-cli login`)
 
 ## Development

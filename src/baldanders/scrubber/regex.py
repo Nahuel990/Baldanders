@@ -433,6 +433,8 @@ _RULES: list[Rule] = [
 
     # ---- Context-only catch-alls ----
     Rule("PASSPORT", _r(r"(?<![\w])(?=[A-Z0-9]*\d)[A-Z0-9]{6,9}(?![\w])", _I), None, PASSPORT_CONTEXT, always=False),
+    # Series and number written apart, as in Russian and other CIS passports: 4510 123456
+    Rule("PASSPORT", _r(_LD + r"\d{2} ?\d{2} \d{6}" + _RD), None, PASSPORT_CONTEXT, always=False),
     Rule("NATIONAL_ID", _r(_LD + r"[A-Z]{0,3}\d{1,3}(?:[. ]?\d{3}){1,4}(?:-?[\dKk])?" + _RD, _I), None, NATIONAL_ID_CONTEXT, always=False,
          not_after=_r(r"(?:order|ticket|invoice|customer|user|account|transaction|session|request|product|item|case)\s*(?:(?:id|no\.?|number|#)\s*(?:is|:|#)?\s*)?$", _I)),
     Rule("DATE_OF_BIRTH", _r(_LD + r"\d{1,4}[./-]\d{1,2}[./-]\d{1,4}" + _RD), _date_like, DOB_CONTEXT, always=False),
