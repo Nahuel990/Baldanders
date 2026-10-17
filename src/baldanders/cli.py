@@ -4,24 +4,25 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 import sys
 
 import click
 from rich.console import Console
-from rich.markdown import Markdown
-from rich.panel import Panel
 from rich.progress import BarColumn, DownloadColumn, Progress, TextColumn, TransferSpeedColumn
 from rich.text import Text
 
 from baldanders import __version__
 from baldanders.config import Config, create_default_config, load_config
+from baldanders import vault
 from baldanders.history import (
-    delete_session, list_sessions, load_session, new_session_id, save_session,
+    delete_session, list_sessions, load_session, migrate_plaintext, new_session_id, save_session,
 )
 from baldanders.mapping import SessionMap
 from baldanders.model_manager import download_model, is_downloaded, model_dir
 from baldanders.providers.base import BaseProvider
 from baldanders.scrubber.engine import ScrubEngine
+from baldanders.ui import ORANGE, TerminalUI
 
 console = Console(highlight=False)
 
@@ -41,16 +42,6 @@ _OPENAI_COMPATIBLE = {
     "deepseek": ("https://api.deepseek.com/v1", "deepseek-chat", "DEEPSEEK_API_KEY"),
     "groq": ("https://api.groq.com/openai/v1", "llama-3.3-70b-versatile", "GROQ_API_KEY"),
 }
-
-HELP_TEXT = (
-    "/paste  multi-line input (end with a single . on its own line)\n"
-    "/map    show which token stands for which real value\n"
-    "/raw    toggle scrubbing off/on for the next messages\n"
-    "/clear  start a fresh conversation (keeps the token map)\n"
-    "/help   show this help\n"
-    "/quit   exit"
-)
-
 
 def _build_provider(name: str, api_key: str | None, base_url: str | None) -> BaseProvider:
     # Consumer-auth providers (no API key needed)
@@ -86,39 +77,7 @@ def _build_engine(session_map: SessionMap, config: Config) -> ScrubEngine:
     return engine
 
 
-def _read_input(raw_mode: bool) -> str | None:
-    """Read one message from the terminal. Returns None on EOF/Ctrl-C."""
-    prompt = "[bold red]Raw:[/bold red] " if raw_mode else "[bold blue]You:[/bold blue] "
-    try:
-        first_line = console.input(prompt)
-    except (EOFError, KeyboardInterrupt):
-        return None
-
-    if first_line.strip().lower() == "/paste":
-        console.print("[dim]  Paste your text. Type a single . on a line to send.[/dim]")
-        lines: list[str] = []
-        while True:
-            try:
-                line = console.input("[dim]...:[/dim] ")
-            except (EOFError, KeyboardInterrupt):
-                break
-            if line.strip() == ".":
-                break
-            lines.append(line)
-        return "\n".join(lines).strip()
-
-    lines = [first_line]
-    if first_line.rstrip().endswith(("(", "{", "[", ",", "\\", ";")):
-        console.print("[dim]  (multi-line: empty line to send)[/dim]")
-        while True:
-            try:
-                line = console.input("[dim]...:[/dim] ")
-            except (EOFError, KeyboardInterrupt):
-                break
-            if line.strip() == "":
-                break
-            lines.append(line)
-    return "\n".join(lines).strip()
+_TOKEN = re.compile(r"\[[A-Z_]+_\d+\]")
 
 
 async def _repl(
@@ -130,117 +89,92 @@ async def _repl(
     model: str | None,
     verbose: bool = False,
     save: bool = True,
+    interactive: bool | None = None,
 ) -> None:
-    ner = engine.ner_status
-    ner_line = "[green]loaded[/green]" if ner == "loaded" else f"[yellow]regex-only[/yellow] [dim]({ner})[/dim]"
-    console.print()
-    console.print(Panel(
-        f"[bold]Baldanders {__version__}[/bold]: your personal data never leaves this machine.\n"
-        f"Provider: [bold]{provider.name}[/bold]   Session: [dim]{session_id}{'' if save else ' (not saved)'}[/dim]\n"
-        f"Name/address model: {ner_line}\n"
-        "Commands: [dim]/paste  /map  /raw  /clear  /help  /quit[/dim]",
-        border_style="blue",
-    ))
-    console.print()
-
-    raw_mode = False
+    ui = TerminalUI(
+        console, provider=provider.name, session_id=session_id, saved=save,
+        ner_status=engine.ner_status, version=__version__, interactive=interactive,
+    )
+    ui.header()
+    if provider.name == "codex":
+        ui.note(
+            "Codex can read files on this computer (its sandbox is read-only, not read-nothing). "
+            "Use -p claude-code for the strictest setup.",
+            style=ORANGE,
+        )
 
     def persist() -> None:
         if save:
             save_session(session_id, session_map, messages, provider_state=provider.get_state())
 
     while True:
-        raw = _read_input(raw_mode)
+        raw = await ui.read()
         if raw is None:
-            console.print("\n[dim]Bye.[/dim]")
             break
         if not raw:
             continue
 
         command = raw.lower()
         if command in ("/quit", "/exit"):
-            console.print("[dim]Bye.[/dim]")
             break
         if command == "/help":
-            console.print(Text(HELP_TEXT, style="dim"))
-            console.print()
+            ui.help()
             continue
         if command == "/map":
-            mapping = session_map.get_map()
-            if not mapping:
-                console.print("[dim]No personal data mapped yet.[/dim]")
-            for token, real in mapping.items():
-                line = Text("  ")
-                line.append(token)
-                line.append(" → ")
-                line.append(real, style="bold")
-                console.print(line)
-            console.print()
+            ui.token_map(session_map.get_map())
             continue
         if command == "/raw":
-            raw_mode = not raw_mode
-            if raw_mode:
-                console.print("[bold red]Raw mode ON: messages are sent exactly as typed, with no scrubbing.[/bold red]\n")
+            ui.raw_mode = not ui.raw_mode
+            if ui.raw_mode:
+                ui.note("Raw mode ON: messages are sent exactly as typed, with no scrubbing.", style=f"bold {ORANGE}")
             else:
-                console.print("[dim]Raw mode OFF: scrubbing enabled.[/dim]\n")
+                ui.note("Raw mode OFF: scrubbing enabled.")
             continue
         if command == "/clear":
             messages.clear()
             provider.reset()
             persist()
-            console.print("[dim]Conversation cleared.[/dim]\n")
+            ui.note("Conversation cleared.")
             continue
 
         # Scrub personal data (unless raw mode)
-        if raw_mode:
+        if ui.raw_mode:
             scrubbed = raw
         else:
             scrubbed = engine.scrub(raw)
             if scrubbed != raw:
-                diff = Text("  [scrubbed] ", style="dim yellow")
-                diff.append(scrubbed, style="yellow")
-                console.print(diff)
+                known = session_map.get_map()
+                tokens = list(dict.fromkeys(t for t in _TOKEN.findall(scrubbed) if t in known))
+                ui.protected_line(tokens)
 
         if verbose:
-            console.print()
-            console.print(Panel(
-                Text(scrubbed),
-                title="[bold red]SENT TO AI (exactly this, nothing else)[/bold red]",
-                border_style="red",
-            ))
-            console.print()
+            ui.sent(scrubbed)
 
         messages.append({"role": "user", "content": scrubbed})
 
         try:
-            with console.status("[dim]Thinking...[/dim]"):
+            async with ui.thinking():
                 response = await provider.send(messages, model=model)
-        except KeyboardInterrupt:
-            console.print("[dim]Cancelled.[/dim]\n")
+        except (KeyboardInterrupt, asyncio.CancelledError):
+            # Ctrl+C while waiting: drop this turn and keep the session going.
+            task = asyncio.current_task()
+            if task is not None and hasattr(task, "uncancel"):
+                task.uncancel()
+            ui.note("Cancelled.")
             messages.pop()
             continue
         except Exception as e:
-            console.print(Text.assemble(("Error: ", "red"), str(e)))
-            console.print()
+            ui.error(str(e))
             messages.pop()
             continue
 
         if verbose:
-            console.print(Panel(
-                Text(response),
-                title="[bold cyan]RAW RESPONSE FROM AI[/bold cyan]",
-                border_style="cyan",
-            ))
+            ui.raw_response(response)
 
         messages.append({"role": "assistant", "content": response})
 
         # Restore personal data in the response
-        rehydrated = session_map.rehydrate(response)
-
-        console.print()
-        console.print("[bold green]Assistant:[/bold green]")
-        console.print(Markdown(rehydrated))
-        console.print()
+        ui.assistant(session_map.rehydrate(response))
 
         persist()
 
@@ -272,6 +206,12 @@ def main(ctx: click.Context, provider: str, model: str | None, api_key: str | No
     create_default_config()
     config = load_config()
     save = config.save_sessions and not no_save
+    if save and not vault.available():
+        # Never fall back to plaintext: the token map holds the real values.
+        console.print(Text(f"Sessions won't be saved: {vault.unavailable_reason()}.", style="yellow"))
+        save = False
+    if vault.available():
+        migrate_plaintext()
 
     if resume:
         loaded = load_session(resume)
@@ -297,7 +237,10 @@ def main(ctx: click.Context, provider: str, model: str | None, api_key: str | No
                 save_session(session_id, session_map, messages, provider_state=llm.get_state())
             await llm.aclose()
 
-    asyncio.run(run())
+    try:
+        asyncio.run(run())
+    except KeyboardInterrupt:
+        pass
 
 
 @main.command()
@@ -359,6 +302,9 @@ def sessions(delete_id: str | None) -> None:
             console.print(f"[dim]Deleted session {delete_id}.[/dim]")
         else:
             console.print(Text(f"Session '{delete_id}' not found.", style="red"))
+        return
+    if not vault.available():
+        console.print(Text(f"Saved sessions can't be opened: {vault.unavailable_reason()}.", style="yellow"))
         return
     saved = list_sessions()
     if not saved:

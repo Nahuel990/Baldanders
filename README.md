@@ -67,16 +67,17 @@ baldanders --resume 20261002-143022
 baldanders sessions --delete 20261002-143022
 ```
 
-Inside the chat:
+Inside the chat, type `/` for the command menu:
 
 | Command | What it does |
 |---------|-------------|
-| `/paste` | Multi-line input (end with `.` on its own line) |
 | `/map` | Show which token stands for which real value |
 | `/raw` | Toggle scrubbing off/on for messages with nothing sensitive |
 | `/clear` | Start a fresh conversation (keeps the token map) |
-| `/help` | Show commands |
+| `/help` | Show commands and shortcuts |
 | `/quit` | Exit |
+
+Paste multi-line text straight into the prompt. `\` then Enter (or Esc then Enter) adds a new line, Ctrl+C clears the input (twice to exit), Ctrl+D exits. The status line at the bottom shows the provider and how many items have been protected.
 
 Scrub text without talking to any AI, for scripts and pipelines:
 
@@ -141,8 +142,10 @@ Set `BALDANDERS_HOME` to keep config, sessions and the model somewhere other tha
 ## Privacy notes
 
 - **What is sent:** only the scrubbed text, plus a short instruction telling the AI to keep the tokens intact. Run with `-v` to see every byte.
-- **What stays local:** the token map, the model, and your config. Saved sessions (`~/.baldanders/sessions/`) contain the real values so `--resume` works. They are readable only by your user. Turn them off with `--no-save` or `save_sessions: false`.
-- **Subscription CLIs:** Baldanders runs `claude` and `codex` in an empty private directory. For Claude Code, all tools and MCP servers are disabled, so the AI can't read your files. Codex runs in its read-only sandbox, so it can still read files outside that directory if it chooses to. Prefer `-p claude-code` or an API provider for sensitive work. These CLIs add their own context to each request (OS, working directory path, and for Claude Code your personal `~/.claude/CLAUDE.md` if you have one). Baldanders doesn't control that context.
+- **What stays local:** the token map, the model, and your config.
+- **Nothing readable on disk:** saved sessions (`~/.baldanders/sessions/`) hold the real values so `--resume` works, so they are **encrypted**. The key lives in your system keychain (macOS Keychain, Windows Credential Manager, Linux Secret Service), never in a file or an environment variable. An AI agent that can read your files, including Codex or another coding assistant, only finds scrambled data. Without a secure keychain, sessions are simply not saved. Sessions from older versions are encrypted and wiped automatically. Turn saving off entirely with `--no-save` or `save_sessions: false`.
+- **Subscription CLIs:** Baldanders runs `claude` and `codex` in an empty private directory. For Claude Code, all tools and MCP servers are disabled, so the AI can't read your files. Codex has no switch to turn file reading off: its read-only sandbox can still read files elsewhere on your computer, and Baldanders warns about this when you start it. Prefer `-p claude-code` or an API provider for sensitive work. These CLIs add their own context to each request (OS, working directory path, and for Claude Code your personal `~/.claude/CLAUDE.md` if you have one). Baldanders doesn't control that context.
+- **Your config is plain text.** `denylist` entries (client names, project code names) are readable by anything that can read your files. Keep truly secret terms out of it.
 - **No detector is perfect.** Unusual names, free-form addresses, or IDs written in unexpected ways can slip through. Check `-v` output when it matters, and add anything specific to your work to the `denylist`.
 
 ## Install options
