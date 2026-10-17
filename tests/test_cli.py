@@ -37,3 +37,12 @@ def test_unknown_provider_cli_missing(monkeypatch):
     result = CliRunner().invoke(main, ["-p", "grok"])
     assert result.exit_code == 1
     assert "grok-cli not found" in result.output
+
+
+def test_provider_names_and_old_aliases(monkeypatch):
+    import shutil
+    monkeypatch.setattr(shutil, "which", lambda _: None)
+    for name, expected in [("claude-code", "Claude Code not found"), ("claude", "Claude Code not found"),
+                           ("codex", "Codex CLI not found"), ("chatgpt", "Codex CLI not found")]:
+        result = CliRunner().invoke(main, ["-p", name])
+        assert result.exit_code == 1 and expected in result.output, name

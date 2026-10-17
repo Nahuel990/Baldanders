@@ -27,7 +27,7 @@ class ClaudeCodeProvider(BaseProvider):
     so the model can't read local files that never went through the scrubber.
     """
 
-    name = "claude"
+    name = "claude-code"
 
     def __init__(self) -> None:
         self._binary = shutil.which("claude")
@@ -47,7 +47,7 @@ class ClaudeCodeProvider(BaseProvider):
         return {"provider": self.name, "session_id": self._session_id}
 
     def set_state(self, state: dict[str, Any]) -> None:
-        if state.get("provider") == self.name:
+        if state.get("provider") in (self.name, "claude"):  # "claude" in 0.1.0 sessions
             self._session_id = state.get("session_id")
 
     async def send(self, messages: list[dict[str, str]], model: str | None = None) -> str:

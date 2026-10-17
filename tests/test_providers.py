@@ -82,7 +82,7 @@ def test_claude_code_end_to_end(tmp_path, monkeypatch):
     asyncio.run(p.send([{"role": "user", "content": "again"}]))
     args = (tmp_path / "args").read_text().splitlines()
     assert args[args.index("--resume") + 1] == "sess-123"
-    assert p.get_state() == {"provider": "claude", "session_id": "sess-123"}
+    assert p.get_state() == {"provider": "claude-code", "session_id": "sess-123"}
 
     p.reset()
     asyncio.run(p.send([{"role": "user", "content": "fresh"}]))
@@ -177,3 +177,16 @@ def test_grok_transcript_and_extract():
     assert _transcript([{"role": "user", "content": "solo"}]) == "solo"
     assert _extract_text({"output": [{"content": [{"text": "deep"}]}]}) == ""  # unknown shape
     assert _extract_text({"response": {"text": "nested"}}) == "nested"
+
+
+def test_old_session_provider_names_still_restore(monkeypatch):
+    """Sessions saved by 0.1.0 used "claude" and "chatgpt"."""
+    monkeypatch.setattr(shutil, "which", lambda name: f"/usr/bin/{name}")
+    from baldanders.providers.claude_code import ClaudeCodeProvider
+    from baldanders.providers.codex import CodexProvider
+    c = ClaudeCodeProvider()
+    c.set_state({"provider": "claude", "session_id": "old"})
+    assert c.get_state()["session_id"] == "old"
+    x = CodexProvider()
+    x.set_state({"provider": "chatgpt", "thread_id": "th"})
+    assert x.get_state()["thread_id"] == "th"

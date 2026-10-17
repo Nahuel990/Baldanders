@@ -25,7 +25,15 @@ from baldanders.scrubber.engine import ScrubEngine
 
 console = Console(highlight=False)
 
-PROVIDERS = ["claude", "chatgpt", "grok", "anthropic-api", "openai-api", "deepseek", "groq"]
+PROVIDERS = ["claude-code", "codex", "grok", "anthropic-api", "openai-api", "deepseek", "groq"]
+
+# Names used by 0.1.0, still accepted but not shown in --help.
+_ALIASES = {"claude": "claude-code", "chatgpt": "codex"}
+
+
+class _ProviderChoice(click.Choice):
+    def convert(self, value, param, ctx):
+        return super().convert(_ALIASES.get(value, value), param, ctx)
 
 _OPENAI_COMPATIBLE = {
     # name: (base url, default model, api key env var)
@@ -46,10 +54,11 @@ HELP_TEXT = (
 
 def _build_provider(name: str, api_key: str | None, base_url: str | None) -> BaseProvider:
     # Consumer-auth providers (no API key needed)
-    if name == "claude":
+    name = _ALIASES.get(name, name)
+    if name == "claude-code":
         from baldanders.providers.claude_code import ClaudeCodeProvider
         return ClaudeCodeProvider()
-    if name == "chatgpt":
+    if name == "codex":
         from baldanders.providers.codex import CodexProvider
         return CodexProvider()
     if name == "grok":
@@ -237,8 +246,8 @@ async def _repl(
 
 
 @click.group(invoke_without_command=True)
-@click.option("--provider", "-p", default="claude", type=click.Choice(PROVIDERS),
-              help="LLM backend. claude/chatgpt/grok use your subscription (no API key).")
+@click.option("--provider", "-p", default="claude-code", type=_ProviderChoice(PROVIDERS),
+              help="AI backend. claude-code, codex and grok use your existing login (no API key).")
 @click.option("--model", "-m", default=None, help="Model name override.")
 @click.option("--api-key", default=None, envvar="BALDANDERS_API_KEY",
               help="API key (only needed for direct API providers).")
