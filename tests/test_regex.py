@@ -222,9 +222,24 @@ def test_digit_ids_need_context_unless_paranoid():
     ("my passport number is X1234567", "X1234567"),
     ("número de pasaporte: AAB123456", "AAB123456"),
     ("Reisepass C01X00T47", "C01X00T47"),
+    ("Numéro de passeport : 18AB12345", "18AB12345"),
+    ("Паспорт 4510 123456", "4510 123456"),
+    ("护照号码 E12345678", "E12345678"),
+    ("パスポート番号 TK1234567", "TK1234567"),
+    ("여권번호 M12345678", "M12345678"),
+    ("رقم جواز السفر A12345678", "A12345678"),
+    ("पासपोर्ट नंबर J8369854", "J8369854"),
+    ("I'll travel with passport 123456789 next week", "123456789"),
 ])
 def test_passport_with_context(text, value):
     assert ("PASSPORT", value) in types(text)
+
+
+@pytest.mark.parametrize("text", [
+    "The passport office opens at 9", "Renew your passport before 2027", "passport.js version 0.7.0",
+])
+def test_passport_word_alone_not_scrubbed(text):
+    assert types(text) == []
 
 
 @pytest.mark.parametrize("text, value", [
