@@ -219,6 +219,7 @@ DOB_CONTEXT = (
 NATIONAL_ID_CONTEXT = (
     "dni", "d.n.i", "documento", "documento de identidad", "cedula", "c.c", "c.i",
     "cedula de identidad", "identificacion", "id number", "id no", "id #", "identity",
+    "my id", "id is", "id:", "your id", "his id", "her id",
     "national id", "identity card", "id card", "carte d'identite", "cni",
     "personalausweis", "ausweis", "carta d'identita", "bilhete de identidade",
     "rg", "registro geral", "rut", "cuil", "cuit", "nit", "nif", "nie", "curp",
@@ -432,7 +433,8 @@ _RULES: list[Rule] = [
 
     # ---- Context-only catch-alls ----
     Rule("PASSPORT", _r(r"(?<![\w])(?=[A-Z0-9]*\d)[A-Z0-9]{6,9}(?![\w])", _I), None, PASSPORT_CONTEXT, always=False),
-    Rule("NATIONAL_ID", _r(_LD + r"[A-Z]{0,3}\d{1,3}(?:[. ]?\d{3}){1,4}(?:-?[\dKk])?" + _RD, _I), None, NATIONAL_ID_CONTEXT, always=False),
+    Rule("NATIONAL_ID", _r(_LD + r"[A-Z]{0,3}\d{1,3}(?:[. ]?\d{3}){1,4}(?:-?[\dKk])?" + _RD, _I), None, NATIONAL_ID_CONTEXT, always=False,
+         not_after=_r(r"(?:order|ticket|invoice|customer|user|account|transaction|session|request|product|item|case)\s*(?:(?:id|no\.?|number|#)\s*(?:is|:|#)?\s*)?$", _I)),
     Rule("DATE_OF_BIRTH", _r(_LD + r"\d{1,4}[./-]\d{1,2}[./-]\d{1,4}" + _RD), _date_like, DOB_CONTEXT, always=False),
     Rule("DATE_OF_BIRTH", _r(r"\b\d{1,2}(?:st|nd|rd|th|er|º|°)?\.?(?:\s+de)?\s+[^\W\d_]{3,12}\.?(?:\s+de)?,?\s+(?:1[89]|20)\d{2}\b"), None, DOB_CONTEXT, always=False),
     Rule("DATE_OF_BIRTH", _r(r"\b[^\W\d_]{3,12}\.?\s+\d{1,2}(?:st|nd|rd|th)?,?\s+(?:1[89]|20)\d{2}\b"), None, DOB_CONTEXT, always=False),

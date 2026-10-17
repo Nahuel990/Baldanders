@@ -190,6 +190,27 @@ def test_mistyped_id_next_to_keyword_still_scrubbed():
     assert [t for t, _ in types("DNI 54362315-J")] == ["NATIONAL_ID"]
 
 
+@pytest.mark.parametrize("text, value", [
+    ("my ID is 30.123.456", "30.123.456"),
+    ("and my ID is 22241882", "22241882"),
+    ("ID: 22241882", "22241882"),
+    ("her ID 30123456", "30123456"),
+])
+def test_plain_id_keyword(text, value):
+    assert ("NATIONAL_ID", value) in types(text)
+
+
+@pytest.mark.parametrize("text", [
+    "Order ID: 88213 shipped",
+    "ticket id is 30123456",
+    "customer ID 22241882 updated",
+    "SELECT name FROM users WHERE id = 22241882",
+    "I was charged twice for order 88213. My DNI is",
+])
+def test_plain_id_keyword_skips_record_ids(text):
+    assert not types(text)
+
+
 def test_digit_ids_need_context_unless_paranoid():
     # A valid PESEL with no keyword nearby is just a number...
     assert not types("order 44051401359 shipped")
