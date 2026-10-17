@@ -239,3 +239,35 @@ def test_old_session_provider_names_still_restore(monkeypatch):
     x = CodexProvider()
     x.set_state({"provider": "chatgpt", "thread_id": "th"})
     assert x.get_state()["thread_id"] == "th"
+
+
+@posix_only
+def test_claude_code_warm_up_reuses_the_process(tmp_path, monkeypatch):
+    _claude(tmp_path, monkeypatch)
+    from baldanders.providers.claude_code import ClaudeCodeProvider
+
+    async def run():
+        p = ClaudeCodeProvider()
+        await p.warm_up()
+        await p.send([{"role": "user", "content": "hi"}])
+        await p.aclose()
+
+    asyncio.run(run())
+    assert (tmp_path / "starts").read_text().count("start") == 1
+
+
+@posix_only
+def test_claude_code_model_switch_restarts_with_model(tmp_path, monkeypatch):
+    _claude(tmp_path, monkeypatch)
+    from baldanders.providers.claude_code import ClaudeCodeProvider
+
+    async def run():
+        p = ClaudeCodeProvider()
+        await p.send([{"role": "user", "content": "one"}])
+        await p.send([{"role": "user", "content": "two"}], model="haiku")
+        await p.aclose()
+
+    asyncio.run(run())
+    args = (tmp_path / "args").read_text().splitlines()
+    assert args[args.index("--model") + 1] == "haiku"
+    assert args[args.index("--resume") + 1] == "sess-123"  # same conversation

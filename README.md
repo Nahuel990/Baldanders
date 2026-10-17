@@ -74,6 +74,8 @@ Inside the chat, type `/` for the command menu:
 | `/map` | Show which token stands for which real value |
 | `/raw` | Toggle scrubbing off/on for messages with nothing sensitive |
 | `/clear` | Start a fresh conversation (keeps the token map) |
+| `/model` | Show or switch the model mid-chat, e.g. `/model sonnet` (faster) or `/model haiku` (fastest) |
+| `/login` | Sign in to the current tool again |
 | `/help` | Show commands and shortcuts |
 | `/quit` | Exit |
 
@@ -124,6 +126,7 @@ regions: [AR, US]        # local phone formats to recognise; empty = guess from 
 paranoid: false          # scrub checksum-valid IDs even without a keyword nearby
 # ner_threshold: 0.6     # name/address model confidence (default: names 0.7, addresses 0.4)
 save_sessions: true
+# model: sonnet         # default model when -m isn't given (Claude Code: opus, sonnet, haiku)
 
 allowlist:               # never scrub these
   - my-s3-bucket-name

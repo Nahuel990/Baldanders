@@ -80,6 +80,14 @@ def _build_engine(session_map: SessionMap, config: Config) -> ScrubEngine:
 _TOKEN = re.compile(r"\[[A-Z_]+_\d+\]")
 
 
+async def _finish(task: asyncio.Task) -> None:
+    """Wait for a background task, ignoring its errors and cancellation."""
+    try:
+        await task
+    except (Exception, asyncio.CancelledError):
+        pass
+
+
 async def _sign_in(ui: TerminalUI, provider: BaseProvider) -> bool:
     """Run the tool's own sign-in in this terminal, then check it worked."""
     command = " ".join(provider.login_command)
@@ -128,12 +136,17 @@ async def _repl(
             style=ORANGE,
         )
 
+    ui.model = model
+
     # Checked locally by the tool itself; nothing is sent to the AI.
     status = await provider.check_login()
     if status.ok is False:
         ui.note(f"You're not signed in to {provider.tool}.", style=ORANGE)
         if not await _sign_in(ui, provider):
             return False
+
+    # Start the tool in the background while the user types the first message.
+    warm_up = asyncio.create_task(provider.warm_up(model))
 
     def persist() -> None:
         nonlocal save
@@ -145,100 +158,123 @@ async def _repl(
             save = False
             ui.note(f"Sessions won't be saved from now on: {e}.", style=ORANGE)
 
-    pending = ""  # a message that failed to send, put back in the prompt
-    while True:
-        raw = await ui.read(default=pending)
-        pending = ""
-        if raw is None:
-            break
-        if not raw:
-            continue
+    try:
+        pending = ""  # a message that failed to send, put back in the prompt
+        while True:
+            raw = await ui.read(default=pending)
+            pending = ""
+            if raw is None:
+                break
+            if not raw:
+                continue
 
-        command = raw.lower()
-        if command in ("/quit", "/exit"):
-            break
-        if command == "/help":
-            ui.help()
-            continue
-        if command == "/map":
-            ui.token_map(session_map.get_map())
-            continue
-        if command == "/raw":
-            ui.raw_mode = not ui.raw_mode
+            command = raw.lower()
+            if command in ("/quit", "/exit"):
+                break
+            if command == "/help":
+                ui.help()
+                continue
+            if command == "/map":
+                ui.token_map(session_map.get_map())
+                continue
+            if command == "/raw":
+                ui.raw_mode = not ui.raw_mode
+                if ui.raw_mode:
+                    ui.note("Raw mode ON: messages are sent exactly as typed, with no scrubbing.", style=f"bold {ORANGE}")
+                else:
+                    ui.note("Raw mode OFF: scrubbing enabled.")
+                continue
+            if command == "/clear":
+                messages.clear()
+                provider.reset()
+                warm_up = asyncio.create_task(provider.warm_up(model))
+                persist()
+                ui.note("Conversation cleared.")
+                continue
+            if command == "/model" or command.startswith("/model "):
+                choice = raw.split(maxsplit=1)[1].strip() if " " in raw.strip() else ""
+                if not choice:
+                    current = model or "the tool's default"
+                    ui.note(f"Model: {current}. Switch with /model <name>"
+                            + (", e.g. opus, sonnet (faster) or haiku (fastest)." if provider.name == "claude-code" else "."))
+                else:
+                    model = None if choice.lower() == "default" else choice
+                    ui.model = model
+                    await provider.reconnect()  # restart with the new model, same conversation
+                    warm_up = asyncio.create_task(provider.warm_up(model))
+                    ui.note(f"Model set to {model or 'the default'}. The conversation carries on.")
+                continue
+            if command == "/login":
+                if provider.login_command:
+                    if await _sign_in(ui, provider):
+                        warm_up = asyncio.create_task(provider.warm_up(model))
+                else:
+                    ui.note(f"{provider.name} signs in with an API key, there's nothing to log in to.")
+                continue
+
+            # Scrub personal data (unless raw mode). Runs in a thread so the
+            # spinner keeps moving if the names model is still loading.
             if ui.raw_mode:
-                ui.note("Raw mode ON: messages are sent exactly as typed, with no scrubbing.", style=f"bold {ORANGE}")
+                scrubbed = raw
             else:
-                ui.note("Raw mode OFF: scrubbing enabled.")
-            continue
-        if command == "/clear":
-            messages.clear()
-            provider.reset()
-            persist()
-            ui.note("Conversation cleared.")
-            continue
-        if command == "/login":
-            if provider.login_command:
-                await _sign_in(ui, provider)
-            else:
-                ui.note(f"{provider.name} signs in with an API key, there's nothing to log in to.")
-            continue
-
-        # Scrub personal data (unless raw mode). Runs in a thread so the
-        # spinner keeps moving if the names model is still loading.
-        if ui.raw_mode:
-            scrubbed = raw
-        else:
-            if engine.ner_status == "loading":
-                async with ui.thinking("Loading the names model…"):
+                if engine.ner_status == "loading":
+                    async with ui.thinking("Loading the names model…"):
+                        scrubbed = await asyncio.to_thread(engine.scrub, raw)
+                else:
                     scrubbed = await asyncio.to_thread(engine.scrub, raw)
-            else:
-                scrubbed = await asyncio.to_thread(engine.scrub, raw)
-            if scrubbed != raw:
-                known = session_map.get_map()
-                tokens = list(dict.fromkeys(t for t in _TOKEN.findall(scrubbed) if t in known))
-                ui.protected_line(tokens)
+                if scrubbed != raw:
+                    known = session_map.get_map()
+                    tokens = list(dict.fromkeys(t for t in _TOKEN.findall(scrubbed) if t in known))
+                    ui.protected_line(tokens)
 
-        if verbose:
-            ui.sent(scrubbed)
+            if verbose:
+                ui.sent(scrubbed)
 
-        messages.append({"role": "user", "content": scrubbed})
+            messages.append({"role": "user", "content": scrubbed})
 
-        received: list[str] = []
-        rehydrator = StreamRehydrator(session_map)
+            await _finish(warm_up)  # usually long done; if it failed, the message starts the tool as usual
 
-        async def pieces():
-            async for chunk in provider.stream(messages, model=model):
-                received.append(chunk)
-                yield rehydrator.feed(chunk)
-            yield rehydrator.flush()
+            received: list[str] = []
+            rehydrator = StreamRehydrator(session_map)
 
-        try:
-            await ui.stream_reply(pieces())
-        except (KeyboardInterrupt, asyncio.CancelledError):
-            # Ctrl+C while waiting: drop this turn and keep the session going.
-            task = asyncio.current_task()
-            if task is not None and hasattr(task, "uncancel"):
-                task.uncancel()
-            ui.note("Cancelled.")
-            messages.pop()
-            pending = raw
-            continue
-        except Exception as e:
-            message = str(e)
-            if provider.login_command and is_auth_error(message):
-                ui.error(f"You're not signed in to {provider.tool}, or the sign-in has expired.")
-                ui.note("Type /login to sign in, then press Enter to send your message again.")
-            else:
-                ui.error(message)
-            messages.pop()
-            pending = raw
-            continue
+            async def pieces():
+                async for chunk in provider.stream(messages, model=model):
+                    received.append(chunk)
+                    yield rehydrator.feed(chunk)
+                yield rehydrator.flush()
 
-        response = "".join(received)
-        if verbose:
-            ui.raw_response(response)
-        messages.append({"role": "assistant", "content": response})
-        persist()
+            try:
+                await ui.stream_reply(pieces())
+            except (KeyboardInterrupt, asyncio.CancelledError):
+                # Ctrl+C while waiting: drop this turn and keep the session going.
+                task = asyncio.current_task()
+                if task is not None and hasattr(task, "uncancel"):
+                    task.uncancel()
+                ui.note("Cancelled.")
+                messages.pop()
+                pending = raw
+                continue
+            except Exception as e:
+                message = str(e)
+                if provider.login_command and is_auth_error(message):
+                    ui.error(f"You're not signed in to {provider.tool}, or the sign-in has expired.")
+                    ui.note("Type /login to sign in, then press Enter to send your message again.")
+                else:
+                    ui.error(message)
+                messages.pop()
+                pending = raw
+                continue
+
+            response = "".join(received)
+            if verbose:
+                ui.raw_response(response)
+            messages.append({"role": "assistant", "content": response})
+            persist()
+    finally:
+        # Never leave a half-started tool behind if the user quits straight away.
+        if not warm_up.done():
+            warm_up.cancel()
+        await _finish(warm_up)
     return True
 
 
@@ -292,6 +328,7 @@ def main(ctx: click.Context, provider: str, model: str | None, api_key: str | No
         messages = []
         session_id = new_session_id()
 
+    model = model or config.model
     engine = _build_engine(session_map, config)
     engine.preload()  # the prompt appears straight away; scrubbing waits for the model if needed
 

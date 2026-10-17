@@ -39,6 +39,9 @@ class Config:
     # Write conversations and the token mapping to ~/.baldanders/sessions.
     save_sessions: bool = True
 
+    # Model to use when -m isn't given (e.g. sonnet, haiku). None = the tool's own default.
+    model: str | None = None
+
 
 def system_regions() -> list[str]:
     """Best guess at the user's country from the OS locale (e.g. es_AR -> AR)."""
@@ -80,6 +83,7 @@ def load_config(path: Path = DEFAULT_CONFIG_PATH) -> Config:
         paranoid=bool(data.get("paranoid", False)),
         ner_threshold=float(data["ner_threshold"]) if data.get("ner_threshold") is not None else None,
         save_sessions=bool(data.get("save_sessions", True)),
+        model=str(data["model"]) if data.get("model") else None,
     )
 
 
@@ -107,6 +111,10 @@ paranoid: false
 # Name/address model confidence (0-1). Lower catches more, with more false
 # positives. Leave unset for tuned defaults (names 0.7, addresses 0.4).
 # ner_threshold: 0.6
+
+# Model to use when you don't pass -m. Leave unset for the tool's own default.
+# For Claude Code: opus (strongest), sonnet (faster), haiku (fastest).
+# model: sonnet
 
 # Save conversations (including the real values behind each token) to
 # ~/.baldanders/sessions so you can --resume them. Files are readable only by you.

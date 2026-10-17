@@ -72,6 +72,9 @@ class BaseProvider(ABC):
     async def reconnect(self) -> None:
         """Drop any running process so the next message starts fresh (keeps the conversation)."""
 
+    async def warm_up(self, model: str | None = None) -> None:
+        """Get ready before the first message (e.g. start a process). Default: nothing."""
+
     @abstractmethod
     def default_model(self) -> str:
         """Return the default model name for this provider."""
