@@ -65,7 +65,14 @@ class ScrubEngine:
 
     @property
     def ner_status(self) -> str:
-        return "loaded" if self._ner.available else (self._ner.load_error or "unavailable")
+        """Model state without waiting for it: loading, loaded, or why it isn't."""
+        if not self._ner._load_attempted:
+            return "loading"
+        return "loaded" if self._ner._available else (self._ner.load_error or "unavailable")
+
+    def preload(self) -> None:
+        """Load the name model in the background; scrubbing waits for it if needed."""
+        self._ner.preload()
 
     def detect(self, text: str) -> list[Span]:
         """Return the non-overlapping spans that would be scrubbed."""

@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import asyncio
 import os
+import re
 from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, AsyncIterator
 
 from baldanders.config import BASE_DIR
 
@@ -21,10 +23,35 @@ TOKEN_INSTRUCTIONS = (
 )
 
 
+@dataclass
+class LoginStatus:
+    """Result of a provider's local login check (nothing is sent to the AI)."""
+
+    ok: bool | None  # None: couldn't tell, carry on
+    tool: str = ""
+    login_command: list[str] = field(default_factory=list)
+    detail: str = ""
+
+
+# Error text from a CLI that means "not signed in" or "sign-in expired".
+_AUTH_ERROR = re.compile(
+    r"\b401\b|unauthori[sz]ed|not logged in|not signed in|log ?in again|sign ?in again|"
+    r"run /login|please (run )?(/)?login|invalid api key|auth_missing|relogin|"
+    r"refresh token|token (has )?expired|session expired|authentication (failed|required|error)",
+    re.IGNORECASE,
+)
+
+
+def is_auth_error(message: str) -> bool:
+    return bool(_AUTH_ERROR.search(message or ""))
+
+
 class BaseProvider(ABC):
     """Common interface for all LLM providers."""
 
     name: str = ""
+    tool: str = ""                  # human name of the CLI, e.g. "Claude Code"
+    login_command: list[str] = []   # how to sign in, for CLI providers
 
     @abstractmethod
     async def send(self, messages: list[dict[str, str]], model: str | None = None) -> str:
@@ -33,6 +60,17 @@ class BaseProvider(ABC):
         `messages` holds the full scrubbed history; the last entry is the new
         user message.
         """
+
+    async def stream(self, messages: list[dict[str, str]], model: str | None = None) -> AsyncIterator[str]:
+        """Yield the reply in pieces as it is generated. Default: all at once."""
+        yield await self.send(messages, model=model)
+
+    async def check_login(self) -> LoginStatus:
+        """Check locally whether the user is signed in. Default: can't tell."""
+        return LoginStatus(ok=None, tool=self.tool, login_command=list(self.login_command))
+
+    async def reconnect(self) -> None:
+        """Drop any running process so the next message starts fresh (keeps the conversation)."""
 
     @abstractmethod
     def default_model(self) -> str:

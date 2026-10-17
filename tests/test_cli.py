@@ -46,3 +46,18 @@ def test_provider_names_and_old_aliases(monkeypatch):
                            ("codex", "Codex CLI not found"), ("chatgpt", "Codex CLI not found")]:
         result = CliRunner().invoke(main, ["-p", name])
         assert result.exit_code == 1 and expected in result.output, name
+
+
+def test_no_save_never_touches_the_keychain(monkeypatch):
+    """--no-save must not read or create a keychain entry."""
+    import shutil
+    from baldanders import vault
+    from baldanders.providers import claude_code
+
+    calls = []
+    monkeypatch.setattr(vault, "available", lambda: calls.append("available") or True)
+    monkeypatch.setattr(vault, "_fernet", lambda: calls.append("key") or None)
+    monkeypatch.setattr(shutil, "which", lambda name: "/usr/bin/true")
+    result = CliRunner().invoke(main, ["--no-save"], input="/quit\n")
+    assert result.exit_code == 0, result.output
+    assert calls == []

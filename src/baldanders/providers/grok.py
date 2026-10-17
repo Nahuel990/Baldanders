@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import shutil
 from typing import Any
 
-from baldanders.providers.base import BaseProvider, TOKEN_INSTRUCTIONS, run_cli
+from baldanders.providers.base import BaseProvider, LoginStatus, TOKEN_INSTRUCTIONS, run_cli
 
 
 class GrokCLIProvider(BaseProvider):
@@ -20,6 +21,8 @@ class GrokCLIProvider(BaseProvider):
     """
 
     name = "grok"
+    tool = "grok-cli"
+    login_command = ["grok-cli", "login"]
 
     def __init__(self) -> None:
         self._binary = shutil.which("grok-cli")
@@ -31,6 +34,18 @@ class GrokCLIProvider(BaseProvider):
 
     def default_model(self) -> str:
         return ""
+
+    async def check_login(self) -> LoginStatus:
+        status = LoginStatus(ok=None, tool=self.tool, login_command=list(self.login_command))
+        try:
+            code, out, _ = await run_cli([self._binary, "status", "--json"], timeout=30)
+            envelope = json.loads(out)
+        except (OSError, ValueError, asyncio.TimeoutError):
+            return status
+        status.ok = bool(envelope.get("ok"))
+        error = envelope.get("error") or {}
+        status.detail = str(error.get("message", "")) if isinstance(error, dict) else str(error)
+        return status
 
     async def send(self, messages: list[dict[str, str]], model: str | None = None) -> str:
         cmd = [

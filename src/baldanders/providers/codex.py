@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import shutil
@@ -10,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from baldanders.providers.base import (
-    BaseProvider, TOKEN_INSTRUCTIONS, last_user_message, run_cli, workdir,
+    BaseProvider, LoginStatus, TOKEN_INSTRUCTIONS, last_user_message, run_cli, workdir,
 )
 
 
@@ -24,6 +25,8 @@ class CodexProvider(BaseProvider):
     """
 
     name = "codex"
+    tool = "Codex"
+    login_command = ["codex", "login"]
 
     def __init__(self) -> None:
         self._binary = shutil.which("codex")
@@ -36,6 +39,20 @@ class CodexProvider(BaseProvider):
 
     def default_model(self) -> str:
         return ""
+
+    async def check_login(self) -> LoginStatus:
+        status = LoginStatus(ok=None, tool=self.tool, login_command=list(self.login_command))
+        try:
+            code, out, err = await run_cli([self._binary, "login", "status"], timeout=30)
+        except (OSError, asyncio.TimeoutError):
+            return status
+        text = f"{out}\n{err}".lower()
+        if code == 0 and "logged in" in text and "not logged in" not in text:
+            status.ok = True
+        elif "not logged in" in text or code != 0:
+            status.ok = False
+        status.detail = (out or err).strip()
+        return status
 
     def reset(self) -> None:
         self._thread_id = None
