@@ -10,6 +10,10 @@
 
 Local personal-data firewall for cloud LLMs. Chat with Claude, ChatGPT, Grok and others while your names, emails, ID numbers, bank details and secrets stay on your machine.
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Nahuel990/Baldanders/main/docs/demo.gif" alt="Baldanders scrubbing an ID, IBAN, phone, email, API key and password" width="720">
+</p>
+
 ```
 You:        Hi, I'm Nahuel Nucera, my DNI is 30.123.456 and my email is nahuel@gmail.com
 Sent to AI: Hi, I'm [PERSON_1], my DNI is [NATIONAL_ID_1] and my email is [EMAIL_1]
