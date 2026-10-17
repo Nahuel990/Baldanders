@@ -172,16 +172,7 @@ baldanders download   # optional: enables the NER integration tests
 pytest
 ```
 
-<details>
-<summary>Releasing</summary>
-
-Releases go to PyPI from GitHub Actions via [trusted publishing](https://docs.pypi.org/trusted-publishers/), so no API token is stored anywhere.
-
-1. One-time setup: on PyPI, add a pending publisher for project `baldanders`, owner `Nahuel990`, repo `Baldanders`, workflow `release.yml`, environment `pypi`. On GitHub, create an environment named `pypi`.
-2. Bump `__version__` in `src/baldanders/__init__.py` and commit.
-3. Tag and push: `git tag v0.1.0 && git push origin v0.1.0`.
-
-</details>
+Found a bug or something that wasn't scrubbed? [Open an issue](https://github.com/Nahuel990/Baldanders/issues/new/choose). Pull requests aren't accepted.
 
 ## The name
 
