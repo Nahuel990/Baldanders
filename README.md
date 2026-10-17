@@ -67,16 +67,17 @@ baldanders --resume 20261002-143022
 baldanders sessions --delete 20261002-143022
 ```
 
-Inside the chat:
+Inside the chat, type `/` for the command menu:
 
 | Command | What it does |
 |---------|-------------|
-| `/paste` | Multi-line input (end with `.` on its own line) |
 | `/map` | Show which token stands for which real value |
 | `/raw` | Toggle scrubbing off/on for messages with nothing sensitive |
 | `/clear` | Start a fresh conversation (keeps the token map) |
-| `/help` | Show commands |
+| `/help` | Show commands and shortcuts |
 | `/quit` | Exit |
+
+Paste multi-line text straight into the prompt. `\` then Enter (or Esc then Enter) adds a new line, Ctrl+C clears the input (twice to exit), Ctrl+D exits. The status line at the bottom shows the provider and how many items have been protected.
 
 Scrub text without talking to any AI, for scripts and pipelines:
 
