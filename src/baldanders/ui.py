@@ -34,6 +34,7 @@ COMMANDS: dict[str, str] = {
     "/raw": "Toggle scrubbing off/on (only for messages with nothing sensitive)",
     "/clear": "Start a fresh conversation (keeps the token map)",
     "/login": "Sign in to the current tool again",
+    "/model": "Show or switch the model, e.g. /model sonnet",
     "/help": "Show commands and shortcuts",
     "/quit": "Exit",
 }
@@ -66,6 +67,7 @@ class TerminalUI:
         self.version = version
         self.protected = 0
         self.raw_mode = False
+        self.model: str | None = None
         self._last_interrupt = 0.0
         self.interactive = (
             sys.stdin.isatty() and sys.stdout.isatty() if interactive is None else interactive
@@ -175,7 +177,7 @@ class TerminalUI:
         def toolbar():
             if time.monotonic() - self._last_interrupt < 2:
                 return HTML("<toolbar>  Press Ctrl+C again to exit</toolbar>")
-            parts = [self.provider]
+            parts = [self.provider + (f" ({self.model})" if self.model else "")]
             if self.ner_status == "loading":
                 parts.append("loading names model…")
             if self.raw_mode:

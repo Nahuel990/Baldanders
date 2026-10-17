@@ -61,3 +61,10 @@ def test_no_save_never_touches_the_keychain(monkeypatch):
     result = CliRunner().invoke(main, ["--no-save"], input="/quit\n")
     assert result.exit_code == 0, result.output
     assert calls == []
+
+
+def test_config_model_used_when_no_flag(tmp_path, monkeypatch):
+    from baldanders.config import load_config
+    cfg = tmp_path / "config.yaml"
+    cfg.write_text("model: sonnet\n")
+    assert load_config(cfg).model == "sonnet"

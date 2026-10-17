@@ -203,5 +203,10 @@ class ClaudeCodeProvider(BaseProvider):
     async def reconnect(self) -> None:
         await self._stop()
 
+    async def warm_up(self, model: str | None = None) -> None:
+        """Start Claude Code now, so the first message doesn't wait for it."""
+        if self._proc is None or self._proc.returncode is not None:
+            await self._start(model)
+
     async def aclose(self) -> None:
         await self._stop()
