@@ -2,7 +2,7 @@
   <img src="https://raw.githubusercontent.com/Nahuel990/Baldanders/main/baldanders.svg" alt="Baldanders" width="320">
 </p>
 
-<h3 align="center">Put real customer data through Claude and ChatGPT without it ever reaching them.</h3>
+<h3 align="center">Put real customer data through ClaudeCode and Codex without it ever reaching them.</h3>
 
 <p align="center">
   <a href="https://pypi.org/project/baldanders/"><img src="https://img.shields.io/pypi/v/baldanders?cacheSeconds=3600" alt="PyPI"></a>
