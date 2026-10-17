@@ -2,49 +2,46 @@
   <img src="https://raw.githubusercontent.com/Nahuel990/Baldanders/main/baldanders.svg" alt="Baldanders" width="320">
 </p>
 
-# Baldanders
+<h3 align="center">Put real customer data through Claude and ChatGPT without it ever reaching them.</h3>
 
-[![PyPI](https://img.shields.io/pypi/v/baldanders?cacheSeconds=3600)](https://pypi.org/project/baldanders/)
-[![Python](https://img.shields.io/pypi/pyversions/baldanders?cacheSeconds=3600)](https://pypi.org/project/baldanders/)
-[![CI](https://github.com/Nahuel990/Baldanders/actions/workflows/ci.yml/badge.svg)](https://github.com/Nahuel990/Baldanders/actions/workflows/ci.yml)
+<p align="center">
+  <a href="https://pypi.org/project/baldanders/"><img src="https://img.shields.io/pypi/v/baldanders?cacheSeconds=3600" alt="PyPI"></a>
+  <a href="https://pypi.org/project/baldanders/"><img src="https://img.shields.io/pypi/pyversions/baldanders?cacheSeconds=3600" alt="Python"></a>
+  <a href="https://github.com/Nahuel990/Baldanders/actions/workflows/ci.yml"><img src="https://github.com/Nahuel990/Baldanders/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT"></a>
+</p>
 
-Local personal-data firewall for cloud LLMs. Chat with Claude, ChatGPT, Grok and others while your names, emails, ID numbers, bank details and secrets stay on your machine.
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Nahuel990/Baldanders/main/docs/demo.gif" alt="Baldanders replacing a DNI and a phone number with tokens before they reach the AI, then restoring them in the reply" width="760">
+</p>
 
-```
-You:        Hi, I'm Nahuel Nucera, my DNI is 30.123.456 and my email is nahuel@gmail.com
-Sent to AI: Hi, I'm [PERSON_1], my DNI is [NATIONAL_ID_1] and my email is [EMAIL_1]
-AI replied: Hi [PERSON_1], ...
-You see:    Hi Nahuel Nucera, ...
+Baldanders is a local personal-data firewall for cloud LLMs. You chat with Claude, ChatGPT or Grok as usual. Names, emails, ID numbers, bank details and secrets are swapped for tokens like `[PERSON_1]` before anything leaves your machine, and swapped back when the reply arrives. The AI never sees the data. The token map never leaves your computer.
+
+## Why
+
+Most teams can't put customer or employee data into AI tools, because it would be sent to a third party. So the tools get used for harmless work only, or the company pays per token for a controlled API setup.
+
+Baldanders removes that limit at the source. Staff keep using the seat licences you already pay for, on real work with real data, and personal data is stopped on the laptop before it goes out. Run with `-v` to see exactly what was sent.
+
+## Quick start
+
+```bash
+pip install "baldanders[all]"
+baldanders download     # one-time, ~320 MB name & address model, runs offline afterwards
+baldanders              # chat with Claude through your Claude Code login
 ```
 
 ## How it works
 
-You type normally. Baldanders finds personal details, swaps each one for a token like `[PERSON_1]`, and sends only the cleaned text to the AI. When the reply comes back, the tokens are swapped back to the real values. The AI never sees your data, and the token map never leaves your computer.
+Detection runs locally, in three layers:
 
-Detection is local and runs in layers:
-
-1. **Your rules**: terms and patterns from your config that must always be hidden.
-2. **Deterministic detectors**: emails, phones (any country), cards, IBANs, 55+ national ID formats, secrets. Each one is checksum-validated where the format has a checksum.
+1. **Your rules.** Terms and patterns from your config that must always be hidden.
+2. **Deterministic detectors.** Emails, phones from any country, cards, IBANs, 55+ national ID formats and secrets, each checksum-validated where the format has a checksum.
 3. **A multilingual AI model** (optional) for names and street addresses in 20+ languages.
 
-## Install
+Each match becomes a token. Only the cleaned text is sent, plus a short instruction asking the AI to keep the tokens intact. Tokens in the reply are replaced with the real values on your side.
 
-```bash
-pip install baldanders                 # core: regex/checksum detectors, all providers except the API ones
-pip install "baldanders[ner]"          # + name & address model (pulls in PyTorch, ~1 GB)
-pip install "baldanders[anthropic]"    # + direct Claude API provider
-pip install "baldanders[all]"          # everything
-```
-
-[pipx](https://pipx.pypa.io) keeps it isolated: `pipx install "baldanders[all]"`.
-
-For name and address detection, download the model once (about 320 MB, checksum-verified). After that it runs fully offline:
-
-```bash
-baldanders download
-```
-
-## Usage
+## Providers
 
 ```bash
 baldanders                      # Claude, via your Claude Code login (no API key)
@@ -56,7 +53,11 @@ baldanders -p openai-api        # OPENAI_API_KEY
 baldanders -p deepseek          # DEEPSEEK_API_KEY
 baldanders -p groq              # GROQ_API_KEY
 baldanders -p openai-api --base-url http://localhost:11434/v1 -m llama3   # any OpenAI-compatible API
+```
 
+## Usage
+
+```bash
 baldanders -v                   # show exactly what leaves your machine
 baldanders --no-save            # don't write this conversation to disk
 baldanders sessions             # list saved sessions
@@ -64,15 +65,7 @@ baldanders --resume 20261002-143022
 baldanders sessions --delete 20261002-143022
 ```
 
-Scrub text without talking to any AI (useful in scripts and pipelines):
-
-```bash
-echo "Call me on +54 9 11 4567-8901" | baldanders scrub
-# Call me on [PHONE_1]
-baldanders scrub --json "IBAN DE89 3704 0044 0532 0130 00"
-```
-
-### Commands inside the chat
+Inside the chat:
 
 | Command | What it does |
 |---------|-------------|
@@ -83,13 +76,27 @@ baldanders scrub --json "IBAN DE89 3704 0044 0532 0130 00"
 | `/help` | Show commands |
 | `/quit` | Exit |
 
+Scrub text without talking to any AI, for scripts and pipelines:
+
+```bash
+echo "Call me on +54 9 11 4567-8901" | baldanders scrub
+# Call me on [PHONE_1]
+baldanders scrub --json "IBAN DE89 3704 0044 0532 0130 00"
+```
+
 ## What gets scrubbed
 
-**Everywhere:** emails (including non-Latin addresses), phone numbers from any country (Google's libphonenumber), credit cards (Luhn-checked), IBANs for 89 countries (length and mod-97 checked), IPv4/IPv6 and MAC addresses, crypto wallets, dates of birth, passport numbers next to a keyword, and names and street addresses with the model installed.
+- **Contact details:** emails (including non-Latin addresses), phone numbers from any country (Google's libphonenumber).
+- **Financial:** credit cards (Luhn-checked), IBANs for 89 countries (length and mod-97 checked), crypto wallets.
+- **Identity:** 55+ national ID and tax number formats, passport numbers next to a keyword, dates of birth.
+- **People and places:** names and street addresses, with the model installed.
+- **Network:** IPv4/IPv6 and MAC addresses.
+- **Secrets:** API keys (AWS, GitHub, GitLab, Slack, Stripe, Google, OpenAI, Anthropic, Hugging Face, npm), JWTs, private keys, passwords in `password: …` / `contraseña = …` / database URLs.
 
-**Secrets:** API keys (AWS, GitHub, GitLab, Slack, Stripe, Google, OpenAI, Anthropic, Hugging Face, npm), JWTs, private keys, passwords in `password: …` / `contraseña = …` / database URLs.
+<details>
+<summary>All national ID and tax number formats</summary>
 
-**National IDs and tax numbers**, validated with [python-stdnum](https://arthurdejong.org/python-stdnum/) where a checksum exists:
+Validated with [python-stdnum](https://arthurdejong.org/python-stdnum/) where a checksum exists.
 
 | Region | Identifiers |
 |--------|-------------|
@@ -99,9 +106,11 @@ baldanders scrub --json "IBAN DE89 3704 0044 0532 0130 00"
 | Africa | South Africa ID |
 | Anywhere | Any ID-shaped number right after a keyword like *DNI, cédula, ID number, Ausweis, 身份证, …* |
 
-Some IDs are just a run of digits with no distinctive shape, like a BSN, PESEL or Steuer-ID. Those are scrubbed when a keyword is nearby ("BSN 111222333"). If you set `paranoid: true`, they're scrubbed on checksum alone.
+Some IDs are just a run of digits with no distinctive shape, like a BSN, PESEL or Steuer-ID. Those are scrubbed when a keyword is nearby ("BSN 111222333"). With `paranoid: true` they're scrubbed on checksum alone.
 
-Ordinary text is left alone: code, SQL, version numbers, order numbers, amounts, ordinary dates and city names. If something is over-scrubbed anyway, the AI only sees a token and you still get the real value back in the reply.
+</details>
+
+Ordinary text is left alone: code, SQL, version numbers, order numbers, amounts, ordinary dates and city names. If something is over-scrubbed anyway, the AI only sees a token and you still get the real value back.
 
 ## Configuration
 
@@ -123,6 +132,8 @@ custom_patterns:         # extra regexes; first capturing group is scrubbed if p
   customer_id: "CID-\\d{8}"
 ```
 
+Use `denylist` and `custom_patterns` for anything specific to your organisation: client names, project code names, internal customer IDs.
+
 Set `BALDANDERS_HOME` to keep config, sessions and the model somewhere other than `~/.baldanders`.
 
 ## Privacy notes
@@ -132,12 +143,21 @@ Set `BALDANDERS_HOME` to keep config, sessions and the model somewhere other tha
 - **Subscription CLIs:** Baldanders runs `claude` and `codex` in an empty private directory. For Claude Code, all tools and MCP servers are disabled, so the AI can't read your files. Codex runs in its read-only sandbox, so it can still read files outside that directory if it chooses to. Prefer `-p claude` or an API provider for sensitive work. These CLIs add their own context to each request (OS, working directory path, and for Claude Code your personal `~/.claude/CLAUDE.md` if you have one). Baldanders doesn't control that context.
 - **No detector is perfect.** Unusual names, free-form addresses, or IDs written in unexpected ways can slip through. Check `-v` output when it matters, and add anything specific to your work to the `denylist`.
 
-## Requirements
+## Install options
 
-- Python 3.10+
-- For `-p claude`: [Claude Code](https://docs.anthropic.com/en/docs/claude-code), logged in
-- For `-p chatgpt`: [Codex CLI](https://github.com/openai/codex) (`npm install -g @openai/codex`, then `codex login`)
-- For `-p grok`: [grok-cli](https://github.com/Moore-developers/grok-cli) (`grok-cli login`)
+```bash
+pip install baldanders                 # core: regex/checksum detectors, all providers except the API ones
+pip install "baldanders[ner]"          # + name & address model (pulls in PyTorch, ~1 GB)
+pip install "baldanders[anthropic]"    # + direct Claude API provider
+pip install "baldanders[all]"          # everything
+```
+
+[pipx](https://pipx.pypa.io) keeps it isolated: `pipx install "baldanders[all]"`.
+
+**Requirements:** Python 3.10+, plus the CLI for the provider you use:
+- `-p claude`: [Claude Code](https://docs.anthropic.com/en/docs/claude-code), logged in
+- `-p chatgpt`: [Codex CLI](https://github.com/openai/codex) (`npm install -g @openai/codex`, then `codex login`)
+- `-p grok`: [grok-cli](https://github.com/Moore-developers/grok-cli) (`grok-cli login`)
 
 ## Development
 
@@ -147,13 +167,20 @@ baldanders download   # optional: enables the NER integration tests
 pytest
 ```
 
-### Releasing
+<details>
+<summary>Releasing</summary>
 
 Releases go to PyPI from GitHub Actions via [trusted publishing](https://docs.pypi.org/trusted-publishers/), so no API token is stored anywhere.
 
 1. One-time setup: on PyPI, add a pending publisher for project `baldanders`, owner `Nahuel990`, repo `Baldanders`, workflow `release.yml`, environment `pypi`. On GitHub, create an environment named `pypi`.
 2. Bump `__version__` in `src/baldanders/__init__.py` and commit.
 3. Tag and push: `git tag v0.1.0 && git push origin v0.1.0`.
+
+</details>
+
+## The name
+
+Baldanders is the shape-shifter from Borges' *Book of Imaginary Beings*, taken from Grimmelshausen's *Simplicissimus*. The name means "soon different". Your data does the same: it leaves as a mask and comes back as itself.
 
 ## License
 
