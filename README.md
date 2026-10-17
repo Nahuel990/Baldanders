@@ -12,7 +12,7 @@
 </p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Nahuel990/Baldanders/main/docs/demo.gif" alt="Baldanders replacing a DNI and a phone number with tokens before they reach the AI, then restoring them in the reply" width="760">
+  <img src="https://raw.githubusercontent.com/Nahuel990/Baldanders/main/docs/demo.gif" alt="Baldanders replacing an ID number and a phone number with tokens before they reach the AI, then restoring them in the reply" width="760">
 </p>
 
 Baldanders is a local personal-data firewall for cloud LLMs. You use Claude Code, Codex or Grok as usual. Names, emails, ID numbers, bank details and secrets are swapped for tokens like `[PERSON_1]` before anything leaves your machine, and swapped back when the reply arrives. The AI never sees the data. The token map never leaves your computer.
