@@ -8,6 +8,7 @@
   <a href="https://pypi.org/project/baldanders/"><img src="https://img.shields.io/pypi/v/baldanders?cacheSeconds=3600" alt="PyPI"></a>
   <a href="https://pypi.org/project/baldanders/"><img src="https://img.shields.io/pypi/pyversions/baldanders?cacheSeconds=3600" alt="Python"></a>
   <a href="https://github.com/Nahuel990/Baldanders/actions/workflows/ci.yml"><img src="https://github.com/Nahuel990/Baldanders/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://pepy.tech/projects/baldanders"><img src="https://static.pepy.tech/personalized-badge/baldanders?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads" alt="PyPI Downloads"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT"></a>
 </p>
 
