@@ -228,6 +228,50 @@ def test_grok_transcript_and_extract():
     assert _extract_text({"response": {"text": "nested"}}) == "nested"
 
 
+def test_openai_streams_sse(monkeypatch):
+    """OpenAI provider yields SSE chunks one by one and assembles them in send()."""
+    import httpx
+    from baldanders.providers.openai import OpenAIProvider
+
+    # Build a minimal SSE response with two content chunks followed by [DONE].
+    sse_body = (
+        b'data: {"choices":[{"delta":{"content":"Hello "}}]}\n\n'
+        b'data: {"choices":[{"delta":{"content":"[PERSON_1]"}}]}\n\n'
+        b'data: [DONE]\n\n'
+    )
+
+    def handler(request):
+        return httpx.Response(200, content=sse_body)
+
+    p = OpenAIProvider(api_key="test-key")
+    p._client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+
+    async def run():
+        chunks = [c async for c in p.stream([{"role": "user", "content": "hi"}])]
+        full = await p.send([{"role": "user", "content": "hi"}])
+        await p.aclose()
+        return chunks, full
+
+    chunks, full = asyncio.run(run())
+    assert chunks == ["Hello ", "[PERSON_1]"]
+    assert full == "Hello [PERSON_1]"
+
+
+def test_openai_stream_error_response(monkeypatch):
+    """HTTP errors are raised with the API's error message."""
+    import httpx
+    from baldanders.providers.openai import OpenAIProvider
+
+    def handler(request):
+        return httpx.Response(401, json={"error": {"message": "Invalid API key."}})
+
+    p = OpenAIProvider(api_key="bad-key")
+    p._client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+
+    with pytest.raises(RuntimeError, match="Invalid API key"):
+        asyncio.run(p.send([{"role": "user", "content": "hi"}]))
+
+
 def test_old_session_provider_names_still_restore(monkeypatch):
     """Sessions saved by 0.1.0 used "claude" and "chatgpt"."""
     monkeypatch.setattr(shutil, "which", lambda name: f"/usr/bin/{name}")

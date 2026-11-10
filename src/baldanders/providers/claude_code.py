@@ -13,9 +13,9 @@ from baldanders.providers.base import (
 
 # Without this, the model sometimes writes out imaginary tool calls and results.
 NO_TOOLS_NOTE = (
-    "In this conversation you have no tools: you cannot read files, run commands "
-    "or browse. Never write out pretend tool calls or their output; answer from "
-    "what the user has told you."
+    "In this conversation you have no tools: you cannot read files, run commands, "
+    "search the web, or fetch URLs. Never write out pretend tool calls or their "
+    "output; answer from what the user has told you."
 )
 
 _STDERR_KEEP = 4000
@@ -80,6 +80,7 @@ class ClaudeCodeProvider(BaseProvider):
             "--verbose",
             "--include-partial-messages",
             "--tools", "",
+            "--disallowedTools", "WebSearch", "WebFetch",
             "--strict-mcp-config",
             "--append-system-prompt", TOKEN_INSTRUCTIONS + " " + NO_TOOLS_NOTE,
         ]

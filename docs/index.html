@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Baldanders: personal-data firewall for cloud LLMs</title>
+  <meta name="description" content="Baldanders scrubs names, emails, ID numbers and secrets before they reach any AI tool, then restores them in the reply. Your data never leaves your machine." />
+
+  <!-- Favicon: inline SVG as data URI -->
+  <link rel="icon" type="image/svg+xml" href="../baldanders.svg" />
+
+  <style>
+    /* ── Reset & base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --crimson:  #E11D48;
+      --orange:   #F97316;
+      --dark:     #18181B;
+      --mid:      #3F3F46;
+      --muted:    #71717A;
+      --subtle:   #A1A1AA;
+      --border:   #27272A;
+      --surface:  #09090B;
+      --card:     #111113;
+      --text:     #F4F4F5;
+      --text-dim: #A1A1AA;
+
+      --radius: 10px;
+      --mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--surface);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      font-size: 16px;
+      line-height: 1.65;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: var(--crimson); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ── Layout ── */
+    .container {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    section { padding: 72px 0; }
+    section + section { border-top: 1px solid var(--border); }
+
+    /* ── Nav ── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: rgba(9, 9, 11, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    nav .inner {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 0 24px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 15px;
+      letter-spacing: 0.04em;
+      color: var(--text);
+      text-decoration: none;
+    }
+
+    .nav-brand svg { width: 28px; height: 28px; flex-shrink: 0; }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      list-style: none;
+    }
+
+    .nav-links a {
+      font-size: 14px;
+      color: var(--text-dim);
+      transition: color 0.15s;
+    }
+    .nav-links a:hover { color: var(--text); text-decoration: none; }
+
+    /* ── Hero ── */
+    .hero {
+      padding: 100px 0 80px;
+      text-align: center;
+    }
+
+    .hero-logo {
+      width: 128px;
+      height: 115px;
+      margin: 0 auto 36px;
+      display: block;
+    }
+
+    .hero h1 {
+      font-size: clamp(28px, 5vw, 44px);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      margin-bottom: 20px;
+      color: var(--text);
+    }
+
+    .hero h1 em {
+      font-style: normal;
+      color: var(--crimson);
+    }
+
+    .hero p {
+      font-size: 18px;
+      color: var(--text-dim);
+      max-width: 560px;
+      margin: 0 auto 36px;
+      line-height: 1.6;
+    }
+
+    .cta-group {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 11px 22px;
+      border-radius: var(--radius);
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+      text-decoration: none;
+    }
+    .btn:hover { opacity: 0.85; text-decoration: none; transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+
+    .btn-primary {
+      background: var(--crimson);
+      color: #fff;
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    /* ── Install block ── */
+    .install {
+      margin-top: 48px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .install-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-width: 340px;
+      max-width: 500px;
+      width: 100%;
+    }
+
+    .install-line {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .install-line .prompt {
+      color: var(--crimson);
+      font-family: var(--mono);
+      font-size: 13px;
+      flex-shrink: 0;
+      user-select: none;
+    }
+
+    .install-line code {
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--text);
+      background: none;
+    }
+
+    .install-line .comment {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--muted);
+      margin-left: auto;
+      white-space: nowrap;
+    }
+
+    /* ── How it works ── */
+    .how-title, .section-title {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 32px;
+      color: var(--text);
+      letter-spacing: -0.01em;
+    }
+
+    .steps {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .step {
+      display: grid;
+      grid-template-columns: 32px 1fr;
+      gap: 0 20px;
+    }
+
+    .step-line {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .step-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--crimson);
+      flex-shrink: 0;
+      margin-top: 5px;
+    }
+
+    .step-connector {
+      width: 2px;
+      flex: 1;
+      background: var(--border);
+      margin: 4px 0;
+      min-height: 24px;
+    }
+
+    .step:last-child .step-connector { display: none; }
+
+    .step-body {
+      padding-bottom: 32px;
+    }
+
+    .step-body h3 {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    .step-body p {
+      font-size: 14px;
+      color: var(--text-dim);
+      line-height: 1.6;
+    }
+
+    .step-body code {
+      font-family: var(--mono);
+      font-size: 12px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 5px;
+      color: var(--orange);
+    }
+
+    /* ── Features grid ── */
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 16px;
+    }
+
+    .feature {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+
+    .feature-icon {
+      font-size: 22px;
+      margin-bottom: 10px;
+    }
+
+    .feature h3 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    .feature p {
+      font-size: 13px;
+      color: var(--text-dim);
+      line-height: 1.55;
+    }
+
+    /* ── Providers ── */
+    .providers {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .provider-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 12px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 18px;
+    }
+
+    .provider-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .provider-note {
+      font-size: 13px;
+      color: var(--text-dim);
+      margin-top: 2px;
+    }
+
+    .badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 20px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .badge-free {
+      background: rgba(249, 115, 22, 0.15);
+      color: var(--orange);
+      border: 1px solid rgba(249, 115, 22, 0.3);
+    }
+
+    .badge-key {
+      background: rgba(161, 161, 170, 0.1);
+      color: var(--subtle);
+      border: 1px solid var(--border);
+    }
+
+    /* ── Privacy note ── */
+    .privacy-box {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--crimson);
+      border-radius: var(--radius);
+      padding: 24px 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .privacy-box p {
+      font-size: 14px;
+      color: var(--text-dim);
+      line-height: 1.65;
+    }
+
+    .privacy-box strong { color: var(--text); }
+
+    /* ── Footer ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 32px 0;
+      text-align: center;
+    }
+
+    footer p {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    footer a { color: var(--muted); }
+    footer a:hover { color: var(--text); }
+
+    /* ── Responsive ── */
+    @media (max-width: 540px) {
+      .hero { padding: 72px 0 60px; }
+      .hero p { font-size: 16px; }
+      .install-card { min-width: 0; }
+      .install-line .comment { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Nav ── -->
+<nav>
+  <div class="inner">
+    <a class="nav-brand" href="#">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 540" aria-hidden="true">
+        <defs>
+          <style>
+            .nb-text { fill: #F4F4F5; }
+            .nb-rim  { fill: #F4F4F5; stroke: #F4F4F5; }
+          </style>
+          <path id="nb-mask" d="M300,50 C375,50 400,95 395,195 C390,295 335,360 300,395 C265,360 210,295 205,195 C200,95 225,50 300,50 Z"/>
+          <mask id="nb-cut-l-f"><rect width="600" height="540" fill="white"/>
+            <g transform="rotate(2,300,395)"><use href="#nb-mask" fill="black" stroke="black" stroke-width="36" stroke-linejoin="round"/></g></mask>
+          <mask id="nb-cut-l-r"><rect width="600" height="540" fill="white"/>
+            <g transform="rotate(2,300,395)"><use href="#nb-mask" fill="black" stroke="black" stroke-width="26" stroke-linejoin="round"/></g></mask>
+          <mask id="nb-cut-c-f"><rect width="600" height="540" fill="white"/>
+            <g transform="rotate(34,300,395)"><use href="#nb-mask" fill="black" stroke="black" stroke-width="36" stroke-linejoin="round"/></g></mask>
+          <mask id="nb-cut-c-r"><rect width="600" height="540" fill="white"/>
+            <g transform="rotate(34,300,395)"><use href="#nb-mask" fill="black" stroke="black" stroke-width="26" stroke-linejoin="round"/></g></mask>
+        </defs>
+        <g mask="url(#nb-cut-l-r)"><g transform="rotate(-32,300,395)"><use href="#nb-mask" class="nb-rim" stroke-width="10" stroke-linejoin="round"/></g></g>
+        <g mask="url(#nb-cut-l-f)"><g transform="rotate(-32,300,395)"><use href="#nb-mask" fill="#18181B"/><polygon points="230,155 285,172 280,190 225,173" fill="#FFFFFF"/><polygon points="370,155 315,172 320,190 375,173" fill="#FFFFFF"/><rect x="255" y="275" width="90" height="18" rx="4" fill="#FFFFFF"/></g></g>
+        <g mask="url(#nb-cut-c-r)"><g transform="rotate(2,300,395)"><use href="#nb-mask" class="nb-rim" stroke-width="10" stroke-linejoin="round"/></g></g>
+        <g mask="url(#nb-cut-c-f)"><g transform="rotate(2,300,395)"><use href="#nb-mask" fill="#E11D48"/><path d="M225,175 Q255,140 285,175 Q255,162 225,175 Z" fill="#FFFFFF"/><path d="M315,175 Q345,140 375,175 Q345,162 315,175 Z" fill="#FFFFFF"/><path d="M245,265 Q300,325 355,265 Q300,295 245,265 Z" fill="#FFFFFF"/></g></g>
+        <g transform="rotate(34,300,395)"><use href="#nb-mask" class="nb-rim" stroke-width="10" stroke-linejoin="round"/><use href="#nb-mask" fill="#F97316"/><polygon points="255,145 280,170 255,195 230,170" fill="#FFFFFF"/><circle cx="345" cy="170" r="14" fill="none" stroke="#FFFFFF" stroke-width="10"/><rect x="245" y="260" width="65" height="15" rx="3" fill="#FFFFFF"/><rect x="285" y="285" width="65" height="15" rx="3" fill="#FFFFFF"/></g>
+      </svg>
+      BALDANDERS
+    </a>
+    <ul class="nav-links">
+      <li><a href="#how">How it works</a></li>
+      <li><a href="#providers">Providers</a></li>
+      <li><a href="https://github.com/Nahuel990/Baldanders" target="_blank" rel="noopener">GitHub</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- ── Hero ── -->
+<section class="hero">
+  <div class="container">
+
+    <svg class="hero-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 540" aria-label="Baldanders logo" role="img">
+      <defs>
+        <path id="h-mask" d="M300,50 C375,50 400,95 395,195 C390,295 335,360 300,395 C265,360 210,295 205,195 C200,95 225,50 300,50 Z"/>
+        <mask id="h-cut-l-f"><rect width="600" height="540" fill="white"/>
+          <g transform="rotate(2,300,395)"><use href="#h-mask" fill="black" stroke="black" stroke-width="36" stroke-linejoin="round"/></g></mask>
+        <mask id="h-cut-l-r"><rect width="600" height="540" fill="white"/>
+          <g transform="rotate(2,300,395)"><use href="#h-mask" fill="black" stroke="black" stroke-width="26" stroke-linejoin="round"/></g></mask>
+        <mask id="h-cut-c-f"><rect width="600" height="540" fill="white"/>
+          <g transform="rotate(34,300,395)"><use href="#h-mask" fill="black" stroke="black" stroke-width="36" stroke-linejoin="round"/></g></mask>
+        <mask id="h-cut-c-r"><rect width="600" height="540" fill="white"/>
+          <g transform="rotate(34,300,395)"><use href="#h-mask" fill="black" stroke="black" stroke-width="26" stroke-linejoin="round"/></g></mask>
+      </defs>
+      <g mask="url(#h-cut-l-r)"><g transform="rotate(-32,300,395)"><use href="#h-mask" fill="#F4F4F5" stroke="#F4F4F5" stroke-width="10" stroke-linejoin="round"/></g></g>
+      <g mask="url(#h-cut-l-f)"><g transform="rotate(-32,300,395)"><use href="#h-mask" fill="#18181B"/><polygon points="230,155 285,172 280,190 225,173" fill="#FFFFFF"/><polygon points="370,155 315,172 320,190 375,173" fill="#FFFFFF"/><rect x="255" y="275" width="90" height="18" rx="4" fill="#FFFFFF"/></g></g>
+      <g mask="url(#h-cut-c-r)"><g transform="rotate(2,300,395)"><use href="#h-mask" fill="#F4F4F5" stroke="#F4F4F5" stroke-width="10" stroke-linejoin="round"/></g></g>
+      <g mask="url(#h-cut-c-f)"><g transform="rotate(2,300,395)"><use href="#h-mask" fill="#E11D48"/><path d="M225,175 Q255,140 285,175 Q255,162 225,175 Z" fill="#FFFFFF"/><path d="M315,175 Q345,140 375,175 Q345,162 315,175 Z" fill="#FFFFFF"/><path d="M245,265 Q300,325 355,265 Q300,295 245,265 Z" fill="#FFFFFF"/></g></g>
+      <g transform="rotate(34,300,395)"><use href="#h-mask" fill="#F4F4F5" stroke="#F4F4F5" stroke-width="10" stroke-linejoin="round"/><use href="#h-mask" fill="#F97316"/><polygon points="255,145 280,170 255,195 230,170" fill="#FFFFFF"/><circle cx="345" cy="170" r="14" fill="none" stroke="#FFFFFF" stroke-width="10"/><rect x="245" y="260" width="65" height="15" rx="3" fill="#FFFFFF"/><rect x="285" y="285" width="65" height="15" rx="3" fill="#FFFFFF"/></g>
+    </svg>
+
+    <h1>Your data wears a mask.<br><em>The AI never sees behind it.</em></h1>
+
+    <p>Baldanders scrubs names, emails, IDs and secrets before they leave your machine, and restores them in the reply. Use Claude Code, Codex or Grok on real data, safely.</p>
+
+    <div class="cta-group">
+      <a class="btn btn-primary" href="https://github.com/Nahuel990/Baldanders#quick-start">
+        Get started
+      </a>
+      <a class="btn btn-secondary" href="https://github.com/Nahuel990/Baldanders">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        View on GitHub
+      </a>
+    </div>
+
+    <div class="install">
+      <div class="install-card" role="region" aria-label="Quick install commands">
+        <div class="install-line">
+          <span class="prompt">$</span>
+          <code>pip install "baldanders[all]"</code>
+        </div>
+        <div class="install-line">
+          <span class="prompt">$</span>
+          <code>baldanders download</code>
+          <span class="comment"># one-time, ~320 MB</span>
+        </div>
+        <div class="install-line">
+          <span class="prompt">$</span>
+          <code>baldanders</code>
+          <span class="comment"># uses your Claude login</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ── How it works ── -->
+<section id="how">
+  <div class="container">
+    <h2 class="how-title">How it works</h2>
+    <div class="steps">
+
+      <div class="step">
+        <div class="step-line"><div class="step-dot"></div><div class="step-connector"></div></div>
+        <div class="step-body">
+          <h3>You type a message</h3>
+          <p>Your prompt goes to Baldanders first. Nothing reaches any AI yet.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-line"><div class="step-dot"></div><div class="step-connector"></div></div>
+        <div class="step-body">
+          <h3>Personal data is detected and replaced</h3>
+          <p>Three layers run locally: your denylist, deterministic rules (checksum-validated emails, IBANs, 55+ national ID formats, secrets), and an optional offline NER model for names and addresses. Each match becomes a token like <code>[PERSON_1]</code> or <code>[IBAN_2]</code>.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-line"><div class="step-dot"></div><div class="step-connector"></div></div>
+        <div class="step-body">
+          <h3>Only the scrubbed text leaves your machine</h3>
+          <p>The AI sees tokens, not real values. Run with <code>-v</code> to verify exactly what was sent.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-line"><div class="step-dot"></div><div class="step-connector"></div></div>
+        <div class="step-body">
+          <h3>Tokens in the reply are restored</h3>
+          <p>Baldanders replaces every token with the original value as the reply streams back. You read a normal, complete response.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-line"><div class="step-dot"></div></div>
+        <div class="step-body">
+          <h3>Sessions are encrypted at rest</h3>
+          <p>Saved conversations are encrypted with a key stored in your OS keychain, never in a file. If no secure keychain is found, nothing is written to disk.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ── Features ── -->
+<section id="features">
+  <div class="container">
+    <h2 class="section-title">What gets scrubbed</h2>
+    <div class="features">
+      <div class="feature">
+        <div class="feature-icon">📧</div>
+        <h3>Contact details</h3>
+        <p>Emails (including non-Latin addresses) and phone numbers from any country via Google's libphonenumber.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">💳</div>
+        <h3>Financial</h3>
+        <p>Credit cards (Luhn-checked), IBANs for 89 countries (mod-97 checked), crypto wallet addresses.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🪪</div>
+        <h3>Identity</h3>
+        <p>55+ national ID and tax number formats, such as SSN, CPF, DNI and Aadhaar, checksum-validated wherever the format has a checksum.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🧑</div>
+        <h3>People &amp; places</h3>
+        <p>Names and street addresses in 20+ languages, using an optional offline AI model.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🔑</div>
+        <h3>Secrets</h3>
+        <p>AWS keys, GitHub tokens, Stripe keys, JWTs, private keys, and passwords in config files or database URLs.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🌐</div>
+        <h3>Network</h3>
+        <p>IPv4, IPv6, and MAC addresses.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Providers ── -->
+<section id="providers">
+  <div class="container">
+    <h2 class="section-title">Works with your tools</h2>
+    <div class="providers">
+
+      <div class="provider-row">
+        <div>
+          <div class="provider-name">Claude Code</div>
+          <div class="provider-note">Uses your existing Claude login, no API key needed. Web search and file access are disabled.</div>
+        </div>
+        <span class="badge badge-free">No API key</span>
+      </div>
+
+      <div class="provider-row">
+        <div>
+          <div class="provider-name">OpenAI Codex CLI</div>
+          <div class="provider-note">Uses your ChatGPT plan login. Codex can still read other files on your computer, so Baldanders warns you at startup; prefer Claude Code or an API provider for sensitive work.</div>
+        </div>
+        <span class="badge badge-free">No API key</span>
+      </div>
+
+      <div class="provider-row">
+        <div>
+          <div class="provider-name">Grok</div>
+          <div class="provider-note">Uses grok-cli with your SuperGrok / X Premium+ login. Web search is disabled.</div>
+        </div>
+        <span class="badge badge-free">No API key</span>
+      </div>
+
+      <div class="provider-row">
+        <div>
+          <div class="provider-name">Claude API (Anthropic)</div>
+          <div class="provider-note"><code>ANTHROPIC_API_KEY</code> or <code>ant auth login</code></div>
+        </div>
+        <span class="badge badge-key">API key</span>
+      </div>
+
+      <div class="provider-row">
+        <div>
+          <div class="provider-name">OpenAI API &middot; DeepSeek &middot; Groq</div>
+          <div class="provider-note">Any OpenAI-compatible endpoint, including local models via Ollama.</div>
+        </div>
+        <span class="badge badge-key">API key</span>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ── Privacy ── -->
+<section id="privacy">
+  <div class="container">
+    <h2 class="section-title">Privacy by design</h2>
+    <div class="privacy-box">
+      <p><strong>What leaves your machine:</strong> only the scrubbed text, plus a short instruction asking the AI to keep tokens intact. Run with <code>-v</code> to see every byte.</p>
+      <p><strong>What stays local:</strong> the token map, the detection model, your config, and your session history.</p>
+      <p><strong>No network calls during detection.</strong> The NER model runs fully offline. The environment variables <code>HF_HUB_OFFLINE</code> and <code>TRANSFORMERS_OFFLINE</code> are set to prevent any telemetry.</p>
+      <p><strong>Encrypted sessions.</strong> Saved conversations are encrypted with Fernet. The key lives in your OS keychain (macOS Keychain, Windows Credential Manager, Linux Secret Service), never in a file or environment variable. Without a secure keychain, nothing is written to disk at all.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── Footer ── -->
+<footer>
+  <div class="container">
+    <p>
+      MIT license &middot;
+      <a href="https://github.com/Nahuel990/Baldanders">GitHub</a> &middot;
+      <a href="https://github.com/Nahuel990/Baldanders/issues">Issues</a> &middot;
+      <a href="https://pypi.org/project/baldanders/">PyPI</a>
+    </p>
+    <p style="margin-top: 8px; font-style: italic;">
+      "Soon different", from Grimmelshausen's <em>Simplicissimus</em>, via Borges.
+    </p>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -66,7 +66,11 @@ async def download_model(
     d = model_dir(cache_dir)
     d.mkdir(parents=True, exist_ok=True)
 
-    async with httpx.AsyncClient(timeout=httpx.Timeout(60, read=300), follow_redirects=True) as client:
+    async with httpx.AsyncClient(
+        timeout=httpx.Timeout(60, read=300),
+        follow_redirects=True,
+        headers={"User-Agent": "baldanders"},
+    ) as client:
         for name, sha in MODEL_FILES:
             target = d / name
             if target.exists() and (sha is None or _sha256(target) == sha):
