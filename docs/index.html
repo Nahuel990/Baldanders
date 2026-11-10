@@ -6,8 +6,8 @@
   <title>Baldanders: personal-data firewall for cloud LLMs</title>
   <meta name="description" content="Baldanders scrubs names, emails, ID numbers and secrets before they reach any AI tool, then restores them in the reply. Your data never leaves your machine." />
 
-  <!-- Favicon: inline SVG as data URI -->
-  <link rel="icon" type="image/svg+xml" href="../baldanders.svg" />
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="baldanders.svg" />
 
   <style>
     /* ── Reset & base ── */
@@ -480,9 +480,9 @@
       <g transform="rotate(34,300,395)"><use href="#h-mask" fill="#F4F4F5" stroke="#F4F4F5" stroke-width="10" stroke-linejoin="round"/><use href="#h-mask" fill="#F97316"/><polygon points="255,145 280,170 255,195 230,170" fill="#FFFFFF"/><circle cx="345" cy="170" r="14" fill="none" stroke="#FFFFFF" stroke-width="10"/><rect x="245" y="260" width="65" height="15" rx="3" fill="#FFFFFF"/><rect x="285" y="285" width="65" height="15" rx="3" fill="#FFFFFF"/></g>
     </svg>
 
-    <h1>Your data wears a mask.<br><em>The AI never sees behind it.</em></h1>
+    <h1>Put real customer data through Claude Code and Codex <em>without it reaching them</em>.</h1>
 
-    <p>Baldanders scrubs names, emails, IDs and secrets before they leave your machine, and restores them in the reply. Use Claude Code, Codex or Grok on real data, safely.</p>
+    <p>Baldanders runs on your machine between you and the CLI you already use. Names, emails, IDs, bank details and secrets are swapped for tokens before your message leaves the laptop, and swapped back when the reply arrives. The model only ever sees the tokens.</p>
 
     <div class="cta-group">
       <a class="btn btn-primary" href="https://github.com/Nahuel990/Baldanders#quick-start">
@@ -526,7 +526,7 @@
         <div class="step-line"><div class="step-dot"></div><div class="step-connector"></div></div>
         <div class="step-body">
           <h3>You type a message</h3>
-          <p>Your prompt goes to Baldanders first. Nothing reaches any AI yet.</p>
+          <p>Your prompt goes to Baldanders first, before any network call.</p>
         </div>
       </div>
 
@@ -572,32 +572,26 @@
     <h2 class="section-title">What gets scrubbed</h2>
     <div class="features">
       <div class="feature">
-        <div class="feature-icon">📧</div>
         <h3>Contact details</h3>
         <p>Emails (including non-Latin addresses) and phone numbers from any country via Google's libphonenumber.</p>
       </div>
       <div class="feature">
-        <div class="feature-icon">💳</div>
         <h3>Financial</h3>
         <p>Credit cards (Luhn-checked), IBANs for 89 countries (mod-97 checked), crypto wallet addresses.</p>
       </div>
       <div class="feature">
-        <div class="feature-icon">🪪</div>
         <h3>Identity</h3>
         <p>55+ national ID and tax number formats, such as SSN, CPF, DNI and Aadhaar, checksum-validated wherever the format has a checksum.</p>
       </div>
       <div class="feature">
-        <div class="feature-icon">🧑</div>
         <h3>People &amp; places</h3>
         <p>Names and street addresses in 20+ languages, using an optional offline AI model.</p>
       </div>
       <div class="feature">
-        <div class="feature-icon">🔑</div>
         <h3>Secrets</h3>
         <p>AWS keys, GitHub tokens, Stripe keys, JWTs, private keys, and passwords in config files or database URLs.</p>
       </div>
       <div class="feature">
-        <div class="feature-icon">🌐</div>
         <h3>Network</h3>
         <p>IPv4, IPv6, and MAC addresses.</p>
       </div>
@@ -608,7 +602,7 @@
 <!-- ── Providers ── -->
 <section id="providers">
   <div class="container">
-    <h2 class="section-title">Works with your tools</h2>
+    <h2 class="section-title">Providers</h2>
     <div class="providers">
 
       <div class="provider-row">
@@ -658,7 +652,7 @@
 <!-- ── Privacy ── -->
 <section id="privacy">
   <div class="container">
-    <h2 class="section-title">Privacy by design</h2>
+    <h2 class="section-title">Privacy</h2>
     <div class="privacy-box">
       <p><strong>What leaves your machine:</strong> only the scrubbed text, plus a short instruction asking the AI to keep tokens intact. Run with <code>-v</code> to see every byte.</p>
       <p><strong>What stays local:</strong> the token map, the detection model, your config, and your session history.</p>
