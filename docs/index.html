@@ -21,7 +21,7 @@
       --wordmark: 'Copperplate', 'Copperplate Gothic Light', 'Engravers Gothic', 'Perpetua Titling MT', serif;
     }
 
-    html { -webkit-text-size-adjust: 100%; }
+    html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
 
     body {
       background: var(--bg);
@@ -51,7 +51,9 @@
 
     /* Left rail */
     .rail { position: sticky; top: 64px; padding-top: 64px; }
-    .brand { display: flex; align-items: center; gap: 11px; }
+    .brand { display: flex; align-items: center; gap: 11px; text-decoration: none; }
+    .brand:hover { text-decoration: none; }
+    .brand:hover .name { color: var(--accent); }
     .brand svg { width: 34px; height: 31px; display: block; flex-shrink: 0; }
     .brand .name {
       font-family: var(--wordmark);
@@ -195,7 +197,7 @@
 <div class="page">
 
   <aside class="rail">
-    <div class="brand">
+    <a class="brand" href="#top" aria-label="Back to top">
       <svg viewBox="0 0 600 540" aria-label="Baldanders logo" role="img">
         <defs>
           <path id="m" d="M300,50 C375,50 400,95 395,195 C390,295 335,360 300,395 C265,360 210,295 205,195 C200,95 225,50 300,50 Z"/>
@@ -209,7 +211,7 @@
         <g transform="rotate(34,300,395)"><use href="#m" fill="#F97316" stroke="#e7e7ea" stroke-width="8" stroke-linejoin="round"/><polygon points="255,145 280,170 255,195 230,170" fill="#FFFFFF"/><circle cx="345" cy="170" r="14" fill="none" stroke="#FFFFFF" stroke-width="10"/><rect x="245" y="260" width="65" height="15" rx="3" fill="#FFFFFF"/><rect x="285" y="285" width="65" height="15" rx="3" fill="#FFFFFF"/></g>
       </svg>
       <span class="name">Baldanders</span>
-    </div>
+    </a>
     <nav>
       <a href="#how">How it works</a>
       <a href="#scrub">What gets scrubbed</a>
