@@ -33,7 +33,9 @@ def test_assistant_renders_markdown_with_bullet():
     ui, console = make_ui()
     ui.assistant("Hola **Ana**\n\n- uno\n- dos")
     out = console.export_text()
-    assert "● Hola Ana" in out and "uno" in out and "**" not in out
+    # Rich renders the grid column separator with padding, so there are two
+    # spaces between the bullet glyph and the markdown content.
+    assert "● " in out and "Hola Ana" in out and "uno" in out and "**" not in out
 
 
 def test_markup_in_replies_is_not_interpreted():
